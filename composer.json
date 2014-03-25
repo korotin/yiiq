@@ -1,0 +1,14 @@
+{
+    "name": "herroffizier/yiiq",
+    "description": "Yii job queue based on Redis",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Martin Stolz",
+            "email": "herr.offizier@gmail.com"
+        }
+    ],
+    "require": {
+
+    }
+}
