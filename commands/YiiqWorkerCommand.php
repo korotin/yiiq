@@ -3,12 +3,12 @@ require_once __DIR__.'/YiiqBaseCommand.php';
 
 class YiiqWorkerCommand extends YiiqBaseCommand
 {
-    public $queue;
     public $maxThreads  = 5;
 
     protected $shutdown = false;
 
     protected $pid;
+    protected $queue;
     protected $childPool;
 
     protected function getChildPool()
@@ -73,7 +73,8 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         extract($job);
         Yii::trace('Starting job '.$jobId.' ('.$class.')...');
 
-        sleep(10);
+        $job = new $class;
+        $job->execute($args);
 
         Yii::trace('Job '.$jobId.' done.');
         Yii::app()->yiiq->deleteJob($jobId);
@@ -83,14 +84,15 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         exit(0);
     }
     
-    public function actionStart()
+    public function actionStart($queue = null)
     {
         $this->pid = posix_getpid();
+        $this->queue = $queue;
         $this->setupSignals();
 
         Yii::app()->yiiq->pidPool->add($this->pid);
 
-        Yii::trace('Started new yiiq worker '.$this->pid.'.');
+        Yii::trace('Started new yiiq worker '.$this->pid.' for queue '.($this->queue ?: Yiiq::DEFALUT_QUEUE).'.');
 
         $status = null;
         while (true) {

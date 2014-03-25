@@ -3,11 +3,11 @@ require_once __DIR__.'/YiiqBaseCommand.php';
 
 class YiiqCommand extends YiiqBaseCommand {
     
-    public function actionStart()
+    public function actionStart($queue = null)
     {
-        $command = 'nohup sh -c "'.escapeshellarg(Yii::app()->basePath.'/yiic').' yiiqWorker start" > /dev/null 2>&1 &';
+        $command = 'nohup sh -c "'.escapeshellarg(Yii::app()->basePath.'/yiic').' yiiqWorker start --queue='.$queue.'" > /dev/null 2>&1 &';
         $return = null;
-        echo "Running worker...\n";
+        echo "Running worker... ";
         exec($command, $return);
         echo "Done.\n";
     }
