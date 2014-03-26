@@ -1,16 +1,57 @@
 <?php
-require_once __DIR__.'/YiiqBaseCommand.php';
+/**
+ * Yiiq - background job queue manager for Yii
+ *
+ * This file contains Yiiq worker command class.
+ * 
+ * @author  Martin Stolz <herr.offizier@gmail.com>
+ * @package ext.yiiq.commands
+ */
 
+/**
+ * Yiiq worker command class.
+ * 
+ * @author  Martin Stolz <herr.offizier@gmail.com>
+ */
 class YiiqWorkerCommand extends YiiqBaseCommand
 {
-    public $maxThreads  = 5;
-
+    /**
+     * Worker pid.
+     * 
+     * @var int
+     */
+    protected $pid;
+    /**
+     * Worker queue name.
+     * 
+     * @var string
+     */
+    protected $queue;
+    /**
+     * Max count of child threads.
+     * 
+     * @var int
+     */
+    protected $maxThreads;
+    /**
+     * Child pid pool.
+     * 
+     * @var ARedisSet
+     */
+    protected $childPool;
+    /**
+     * Shutdown flag.
+     * Becomes true on SIGTERM.
+     * 
+     * @var boolean
+     */
     protected $shutdown = false;
 
-    protected $pid;
-    protected $queue;
-    protected $childPool;
-
+    /**
+     * Get child pid pool.
+     * 
+     * @return ARedisSet
+     */
     protected function getChildPool()
     {
         if ($this->childPool === null) {
@@ -20,6 +61,9 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         return $this->childPool;
     }
 
+    /**
+     * Set up handlers for signals.
+     */
     protected function setupSignals()
     {
         declare(ticks = 1);
@@ -27,38 +71,56 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         pcntl_signal(SIGTERM, function() {
             $this->shutdown = true;
         });
-        // Grab child process status to prevent zombie processes
+        // Grab child process status to prevent appearing of zombie processes
         pcntl_signal(SIGCHLD, function() {
             $status = null;
-            pcntl_waitpid(-1, $status, WNOHANG);
-            pcntl_wexitstatus($status);
+            if (pcntl_waitpid(-1, $status, WNOHANG) > 0) {
+                pcntl_wexitstatus($status);
+            }
         });
     }
 
+    /**
+     * Get active child threads count.
+     * 
+     * @return int
+     */
     protected function getThreadsCount()
     {
         return (int)Yii::app()->redis->getClient()->scard($this->getChildPool()->name);
     }
 
+    /**
+     * Can we fork one more thread?
+     * 
+     * @return boolean
+     */
     protected function hasFreeThread()
     {
         return $this->getThreadsCount() < $this->maxThreads;
     }
 
-    protected function popJobId()
-    {
-        return Yii::app()->yiiq->getQueue($this->queue)->pop();
-    }
-
+    /**
+     * Run job with given id.
+     * Job will be executed in fork and method will return 
+     * after the fork get initialized.
+     * 
+     * @param  string $jobId
+     */
     protected function runJob($jobId)
     {
         $job = Yii::app()->yiiq->getJob($jobId);
         if (!$job) {
             Yii::log('Job '.$jobId.' is missing.', CLogger::LEVEL_WARNING);
+            return;
         }
 
-        // If we're in parent process, return
-        if (pcntl_fork() !== 0) return;
+        // If we're in parent process, wait for child thread to get initialized
+        // and then return
+        if (pcntl_fork() !== 0) {
+            usleep(100000);
+            return;
+        }
 
         $childPid = posix_getpid();
 
@@ -71,12 +133,12 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         if (!is_array($job)) Yii::trace($job);
 
         extract($job);
-        Yii::trace('Starting job '.$jobId.' ('.$class.')...');
+        Yii::trace('Starting job '.$this->queue.':'.$jobId.' ('.$class.')...');
 
-        $job = new $class;
+        $job = new $class($this->queue, $jobId);
         $job->execute($args);
 
-        Yii::trace('Job '.$jobId.' done.');
+        Yii::trace('Job '.$this->queue.':'.$jobId.' done.');
         Yii::app()->yiiq->deleteJob($jobId);
 
         $this->getChildPool()->remove($childPid);
@@ -84,10 +146,19 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         exit(0);
     }
     
-    public function actionStart($queue = null)
+    /**
+     * Run worker for given queue and with given count of
+     * max child threads.
+     * 
+     * @param  string $queue 
+     * @param  int $threads
+     */
+    public function actionRun($queue, $threads)
     {
-        $this->pid = posix_getpid();
-        $this->queue = $queue;
+        $this->pid          = posix_getpid();
+        $this->queue        = $queue;
+        $this->maxThreads   = (int) $threads;
+
         $this->setupSignals();
 
         Yii::app()->yiiq->pidPool->add($this->pid);
@@ -100,10 +171,8 @@ class YiiqWorkerCommand extends YiiqBaseCommand
                 !$this->shutdown
                 && $this->hasFreeThread()
             ) {
-                if (!($jobId = $this->popJobId())) break;
+                if (!($jobId = Yii::app()->yiiq->popJobId($this->queue))) break;
                 $this->runJob($jobId);
-                // Sleep to let child thread update childPool.
-                usleep(100000);
             }
 
             if ($this->shutdown) break;
@@ -118,7 +187,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
 
         Yii::trace('Waiting for child threads to terminate...');
         while (pcntl_waitpid(-1, $status) > 0) {
-            pcntl_wexitstatus($status);
+            Yii::trace($this->getThreadsCount().' threads left.');
         }
 
         Yii::app()->yiiq->pidPool->remove($this->pid);

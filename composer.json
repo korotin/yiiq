@@ -1,6 +1,6 @@
 {
     "name": "herroffizier/yiiq",
-    "description": "Yii job queue based on Redis",
+    "description": "Background job queue manager for Yii",
     "license": "MIT",
     "authors": [
         {
@@ -8,7 +8,13 @@
             "email": "herr.offizier@gmail.com"
         }
     ],
+    "autoload": {
+        "classmap": [
+            "commands/",
+            "components/",
+            "jobs/"
+        ]
+    },
     "require": {
-
     }
 }
