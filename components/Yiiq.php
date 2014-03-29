@@ -28,6 +28,7 @@ class Yiiq extends CApplicationComponent
     /**
      * Type name for scheduled tasks.
      */
+    const TYPE_SIMPLE       = 'simple';
     const TYPE_SCHEDULED    = 'scheduled';
     
     /**
@@ -51,6 +52,13 @@ class Yiiq extends CApplicationComponent
      * @var ARedisSet[]
      */
     protected $queues       = array();
+
+    /**
+     * Array of schedules.
+     * 
+     * @var ARedisSortedSet[]
+     */
+    protected $schedules    = array();
 
     /**
      * Serialize job.
@@ -86,6 +94,11 @@ class Yiiq extends CApplicationComponent
         return $this->prefix.':job:'.$id;
     }
 
+    protected function generateJobId()
+    {
+        return Yii::app()->redis->incr($this->prefix.':counter');
+    }
+
     /**
      * Is process with given pid alive?
      * 
@@ -118,22 +131,32 @@ class Yiiq extends CApplicationComponent
      * Second parameter, $type, is not used for now.
      * 
      * @param  string[optional] $queue Yiiq::DEFAULT_QUEUE by default
-     * @param  string[optional] $type  Yiiq::TYPE_SCHEDULED by default
      * @return ARedisSet
      */
-    public function getQueue($queue = self::DEFAULT_QUEUE, $type = self::TYPE_SCHEDULED)
+    public function getQueue($queue = self::DEFAULT_QUEUE)
     {
         if (!$queue) {
             $queue = self::DEFAULT_QUEUE;
         }
 
-        $queue = $queue.':'.$type;
-
         if (!isset($this->queues[$queue])) {
-            $this->queues[$queue] = new ARedisSet($this->prefix.':queue:'.$queue);
+            $this->queues[$queue] = new ARedisSet($this->prefix.':queue:'.$queue.':'.self::TYPE_SIMPLE);
         }
 
         return $this->queues[$queue];
+    }
+
+    public function getSchedule($queue = self::DEFAULT_QUEUE)
+    {
+        if (!$queue) {
+            $queue = self::DEFAULT_QUEUE;
+        }
+
+        if (!isset($this->schedules[$queue])) {
+            $this->schedules[$queue] = new ARedisSortedSet($this->prefix.':queue:'.$queue.':'.self::TYPE_SCHEDULED);
+        }
+
+        return $this->schedules[$queue];
     }
 
     /**
@@ -174,6 +197,19 @@ class Yiiq extends CApplicationComponent
         Yii::app()->redis->getClient()->del($key);
     }
 
+    protected function saveJob($id, $class, $args)
+    {
+        if ($id && $this->hasJob($id)) return null;
+        
+        $id     = $id ?: $this->generateJobId();
+        $key    = $this->getJobKey($id);
+        $job    = $this->serializeJob($class, $args);
+
+        Yii::app()->redis->getClient()->set($key, $job);
+
+        return $id;
+    }
+
     /**
      * Create a simple job in given queue.
      *
@@ -185,25 +221,73 @@ class Yiiq extends CApplicationComponent
      */
     public function enqueueJob($class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
     {
-        $id     = $id ?: dechex(crc32(microtime(true).rand()));
-        $key    = $this->getJobKey($id);
-        $job    = $this->serializeJob($class, $args);
-        
-        Yii::app()->redis->getClient()->set($key, $job);
-        $this->getQueue($queue)->add($id);
+        if ($id = $this->saveJob($id, $class, $args)) {
+            $this->getQueue($queue)->add($id);
+        }
 
         return $id;
     }
 
     /**
-     * Pop random job id from given queue.
+     * Create a job in given queue wich will be executed in given time.
+     * 
+     * @param  int $timestamp           timestamp to execute job at
+     * @param  string $class            job class extended from YiiqBaseJob
+     * @param  array[optional] $args    values for job object properties
+     * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
+     * @param  string[optional] $id     globally unique job id             
+     * @return mixed                    job id or null if job with same id extists
+     */
+    public function enqueueJobAt($timestamp, $class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
+    {
+        if ($id = $this->saveJob($id, $class, $args)) {
+            $this->getSchedule($queue)->add($id, $timestamp);
+        }
+
+        return $id;
+    }
+
+    /**
+     * Pop scheduled job id from given queue.
+     * FIXME this action is not atomic
+     * 
+     * @param  string $queue
+     * @return mixed            job id or null
+     */
+    protected function popScheduledJobId($queue)
+    {
+        $schedule = $this->getSchedule($queue);
+        $redis = Yii::app()->redis;
+
+        $ids = $redis->zrangebyscore($schedule->name, 0, time(), 'LIMIT', 0, 1);
+        if (!$ids) return;
+        
+        $id = reset($ids);
+        $redis->zrem($schedule->name, $id);
+
+        return $id;
+    }
+
+    /**
+     * Pop simple job id from given queue.
+     * 
+     * @param  string $queue
+     * @return mixed            job id or null
+     */
+    protected function popSimpleJobId($queue)
+    {
+        return $this->getQueue($queue)->pop();
+    }
+
+    /**
+     * Pop schedlued or simple job id from given queue.
      * 
      * @param  string[optional] $queue Yiiq::DEFAULT_QUEUE by default
      * @return string
      */
     public function popJobId($queue = self::DEFAULT_QUEUE)
     {
-        $id = $this->getQueue($queue)->pop();
+        $id = $this->popScheduledJobId($queue) ?: $this->popSimpleJobId($queue);
         return $id;
     }
 
