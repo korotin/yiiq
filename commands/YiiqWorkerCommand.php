@@ -134,7 +134,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
             $job->execute($args);
         }
         catch (Exception $e) {
-
+            // Exception is caught, but we'll try to exit child thread correctly
         }
 
         $this->getChildPool()->remove($childPid);
@@ -180,14 +180,15 @@ class YiiqWorkerCommand extends YiiqBaseCommand
 
             if ($this->shutdown) break;
 
-            Yii::app()->yiiq->checkPidPool($this->getChildPool());
-
             if ($this->getThreadsCount()) {
                 pcntl_waitpid(-1, $status);
             }
             else {
                 sleep(1);
             }
+
+            // Check for dead pids in child pool
+            Yii::app()->yiiq->checkPidPool($this->getChildPool());
         }
 
         Yii::trace('Waiting for child threads to terminate...');

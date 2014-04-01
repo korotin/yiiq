@@ -138,13 +138,12 @@ class Yiiq extends CApplicationComponent
     }
 
     /**
-     * Get redis job pool for given queue.
-     * Second parameter, $type, is not used for now.
+     * Get simple job pool for given queue.
      * 
      * @param  string[optional] $queue Yiiq::DEFAULT_QUEUE by default
      * @return ARedisSet
      */
-    public function getQueue($queue = self::DEFAULT_QUEUE)
+    protected function getSimplePool($queue = self::DEFAULT_QUEUE)
     {
         if (!$queue) {
             $queue = self::DEFAULT_QUEUE;
@@ -157,7 +156,13 @@ class Yiiq extends CApplicationComponent
         return $this->queues[$queue];
     }
 
-    public function getSchedule($queue = self::DEFAULT_QUEUE)
+    /**
+     * Get scheduled job pool for given queue.
+     * 
+     * @param  string $queue
+     * @return ARedisSortedSet
+     */
+    protected function getScheduledPool($queue = self::DEFAULT_QUEUE)
     {
         if (!$queue) {
             $queue = self::DEFAULT_QUEUE;
@@ -170,7 +175,13 @@ class Yiiq extends CApplicationComponent
         return $this->schedules[$queue];
     }
 
-    public function getRepeatable($queue = self::DEFAULT_QUEUE)
+    /**
+     * Get repeatable job pool for given queue.
+     * 
+     * @param  string $queue
+     * @return ARedisSortedSet
+     */
+    protected function getRepeatablePool($queue = self::DEFAULT_QUEUE)
     {
         if (!$queue) {
             $queue = self::DEFAULT_QUEUE;
@@ -181,144 +192,6 @@ class Yiiq extends CApplicationComponent
         }
 
         return $this->repeatables[$queue];
-    }
-
-    /**
-     * Does job with given id exists.
-     * 
-     * @param  string  $id
-     * @return boolean
-     */
-    public function hasJob($id)
-    {
-        $key = $this->getJobKey($id);
-        return Yii::app()->redis->getClient()->exists($id);
-    }
-
-    /**
-     * Get job data by id.
-     * 
-     * @param  string $id
-     * @return mixed        array with class and args fields or null if no job found
-     */
-    public function getJob($id)
-    {
-        $key = $this->getJobKey($id);
-        $job = Yii::app()->redis->getClient()->get($key);
-        if (!$job) return;
-
-        return $this->deserealizeJob($job); 
-    }
-
-    protected function deleteSimpleJob($queue, $id)
-    {
-        $this->getQueue($queue)->remove($id);
-    }
-
-    protected function deleteScheduledJob($queue, $id)
-    {
-        $this->getSchedule($queue)->remove($id);
-    }
-
-    protected function deleteRepeatableJob($queue, $id)
-    {
-        $this->getRepeatable($queue)->remove($id);
-
-    }
-
-    /**
-     * Delete job data by id.
-     * 
-     * @param  string $id
-     */
-    public function deleteJob($id)
-    {
-        $redis = Yii::app()->redis;
-        $job = $this->getJob($id);
-        $key = $this->getJobKey($id);
-
-        if (isset($job['queue']) && isset($job['type'])) {
-            switch ($job['type']) {
-                case self::TYPE_SIMPLE:
-                    $this->deleteSimpleJob($job['queue'], $id);
-                    break;
-
-                case self::TYPE_SCHEDULED:
-                    $this->deleteScheduledJob($job['queue'], $id);
-                    break;
-
-                case self::TYPE_REPEATABLE:
-                    $this->deleteRepeatableJob($job['queue'], $id);
-                    break;
-            }
-        }
-
-        $redis->del($key);
-    }
-
-    protected function saveJob($queue, $type, $id, $class, $args, $overwrite = false)
-    {
-        if ($id && $this->hasJob($id) && !$overwrite) return null;
-        
-        $id     = $id ?: $this->generateJobId();
-        $key    = $this->getJobKey($id);
-        $job    = $this->serializeJob($queue, $type, $class, $args, time());
-
-        Yii::app()->redis->getClient()->set($key, $job);
-
-        return $id;
-    }
-
-    /**
-     * Create a simple job in given queue.
-     *
-     * @param  string $class            job class extended from YiiqBaseJob
-     * @param  array[optional] $args    values for job object properties
-     * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
-     * @param  string[optional] $id     globally unique job id             
-     * @return mixed                    job id or null if job with same id extists
-     */
-    public function enqueueJob($class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
-    {
-        if ($id = $this->saveJob($queue, self::TYPE_SIMPLE, $id, $class, $args)) {
-            $this->getQueue($queue)->add($id);
-        }
-
-        return $id;
-    }
-
-    /**
-     * Create a job in given queue wich will be executed at given time.
-     * 
-     * @param  int $timestamp           timestamp to execute job at
-     * @param  string $class            job class extended from YiiqBaseJob
-     * @param  array[optional] $args    values for job object properties
-     * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
-     * @param  string[optional] $id     globally unique job id             
-     * @return mixed                    job id or null if job with same id extists
-     */
-    public function enqueueJobAt($timestamp, $class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
-    {
-        if ($id = $this->saveJob($queue, self::TYPE_SCHEDULED, $id, $class, $args)) {
-            $this->getSchedule($queue)->add($id, $timestamp);
-        }
-
-        return $id;
-    }
-
-    /**
-     * Create a job in given queue wich will be executed after given amount of seconds.
-     * 
-     * @param  int $seconds             amount of seconds
-     * @param  string $class            job class extended from YiiqBaseJob
-     * @param  array[optional] $args    values for job object properties
-     * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
-     * @param  string[optional] $id     globally unique job id             
-     * @return mixed                    job id or null if job with same id extists
-     */
-    public function enqueueJobIn($seconds, $class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
-    {
-        return $this->enqueueJobAt(time() + $seconds, $class, $args, $queue, $id);
     }
 
     /**
@@ -353,12 +226,235 @@ class Yiiq extends CApplicationComponent
         Yii::app()->redis->del($this->prefix.':interval:'.$id);
     }
 
+    /**
+     * Does job with given id exist.
+     * 
+     * @param  string  $id
+     * @return boolean
+     */
+    public function hasJob($id)
+    {
+        $key = $this->getJobKey($id);
+        return Yii::app()->redis->getClient()->exists($id);
+    }
+
+    /**
+     * Get job data by id.
+     * 
+     * @param  string $id
+     * @return mixed        array with class and args fields or null if no job found
+     */
+    public function getJob($id)
+    {
+        $key = $this->getJobKey($id);
+        $job = Yii::app()->redis->getClient()->get($key);
+        if (!$job) return;
+
+        return $this->deserealizeJob($job); 
+    }
+
+    /**
+     * Delete simple job.
+     * 
+     * @param  string $queue 
+     * @param  string $id
+     */
+    protected function deleteSimpleJob($queue, $id)
+    {
+        $this->getSimplePool($queue)->remove($id);
+    }
+
+    /**
+     * Delete scheduled job.
+     * 
+     * @param  string $queue 
+     * @param  string $id
+     */
+    protected function deleteScheduledJob($queue, $id)
+    {
+        $this->getScheduledPool($queue)->remove($id);
+    }
+
+    /**
+     * Delete repeatable job.
+     * 
+     * @param  string $queue 
+     * @param  string $id
+     */
+    protected function deleteRepeatableJob($queue, $id)
+    {
+        $this->getRepeatablePool($queue)->remove($id);
+        $this->deleteJobInterval($id);
+    }
+
+    /**
+     * Delete job by id.
+     * 
+     * @param  string $id
+     */
+    public function deleteJob($id)
+    {
+        $redis = Yii::app()->redis;
+        $job = $this->getJob($id);
+        $key = $this->getJobKey($id);
+
+        if (isset($job['queue']) && isset($job['type'])) {
+            switch ($job['type']) {
+                case self::TYPE_SIMPLE:
+                    $this->deleteSimpleJob($job['queue'], $id);
+                    break;
+
+                case self::TYPE_SCHEDULED:
+                    $this->deleteScheduledJob($job['queue'], $id);
+                    break;
+
+                case self::TYPE_REPEATABLE:
+                    $this->deleteRepeatableJob($job['queue'], $id);
+                    break;
+            }
+        }
+
+        $redis->del($key);
+    }
+
+    /**
+     * Save job data to redis.
+     * 
+     * @param  string  $queue
+     * @param  string  $type
+     * @param  string  $id
+     * @param  string  $class
+     * @param  array  $args
+     * @param  boolean $overwrite[optional] overwrite existing job, default is false
+     * @return mixed            id if job is saved or null
+     */
+    protected function saveJob($queue, $type, $id, $class, $args, $overwrite = false)
+    {
+        if ($id && $this->hasJob($id) && !$overwrite) return;
+        
+        $id     = $id ?: $this->generateJobId();
+        $key    = $this->getJobKey($id);
+        $job    = $this->serializeJob($queue, $type, $class, $args, time());
+
+        Yii::app()->redis->getClient()->set($key, $job);
+
+        return $id;
+    }
+
+    /**
+     * Check whether job with given id is correct.
+     * If job is incorrect, it will be deleted.
+     * 
+     * @param  string $id
+     * @return bool         true if job is correct
+     */
+    protected function checkJob($id)
+    {
+        if (
+            !($job = $this->getJob($id))
+            || !isset($job['queue']) 
+            || !isset($job['type'])
+        ) {
+            $this->deleteJob($id);
+            return false;
+        }
+
+        switch ($job['type']) {
+            case self::TYPE_SIMPLE:
+                $pool = $this->getSimplePool($job['queue']);
+                break;
+
+            case self::TYPE_SCHEDULED:
+                $pool = $this->getScheduledPool($job['queue']);
+                break;
+
+            case self::TYPE_REPEATABLE:
+                $pool = $this->getRepeatablePool($job['queue']);
+                break;
+        }
+
+        if (!$pool->contains($id)) {
+            $this->deleteJob($id);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Create a simple job in given queue.
+     *
+     * @param  string $class            job class extended from YiiqBaseJob
+     * @param  array[optional] $args    values for job object properties
+     * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
+     * @param  string[optional] $id     globally unique job id             
+     * @return mixed                    job id or null if job with same id extists
+     */
+    public function enqueueJob($class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
+    {
+        if ($id = $this->saveJob($queue, self::TYPE_SIMPLE, $id, $class, $args)) {
+            $this->getSimplePool($queue)->add($id);
+        }
+
+        return $id;
+    }
+
+    /**
+     * Create a job in given queue wich will be executed at given time.
+     * 
+     * @param  int $timestamp           timestamp to execute job at
+     * @param  string $class            job class extended from YiiqBaseJob
+     * @param  array[optional] $args    values for job object properties
+     * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
+     * @param  string[optional] $id     globally unique job id             
+     * @return mixed                    job id or null if job with same id extists
+     */
+    public function enqueueJobAt($timestamp, $class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
+    {
+        if ($id = $this->saveJob($queue, self::TYPE_SCHEDULED, $id, $class, $args)) {
+            $this->getScheduledPool($queue)->add($id, $timestamp);
+        }
+
+        return $id;
+    }
+
+    /**
+     * Create a job in given queue wich will be executed after given amount of seconds.
+     * 
+     * @param  int $interval            amount of seconds to wait before execution
+     * @param  string $class            job class extended from YiiqBaseJob
+     * @param  array[optional] $args    values for job object properties
+     * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
+     * @param  string[optional] $id     globally unique job id             
+     * @return mixed                    job id or null if job with same id extists
+     */
+    public function enqueueJobIn($interval, $class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
+    {
+        $interval = (int) floor($interval);
+        return $this->enqueueJobAt(time() + $interval, $class, $args, $queue, $id);
+    }
+
+    /**
+     * Create a job, which will execute each $interval seconds.
+     * 
+     * Unlike other job types repeatable job requires $id to be set.
+     * If job with given id already exists, it will be overwritten.
+     * 
+     * @param  string $id
+     * @param  integer $interval
+     * @param  string $class
+     * @param  array  $args[optional]
+     * @param  string $queue[optional]
+     * @return string
+     */
     public function enqueueRepeatableJob($id, $interval, $class, array $args = array(), $queue = self::DEFAULT_QUEUE)
     {
         $this->saveJob($queue, self::TYPE_REPEATABLE, $id, $class, $args, true);
 
+        $interval = (int) floor($interval);
         $this->setJobInterval($id, $interval);
-        $this->getRepeatable($queue)->add($id, time());
+        $this->getRepeatablePool($queue)->add($id, time());
+
         return $id;
     }
 
@@ -370,10 +466,11 @@ class Yiiq extends CApplicationComponent
      */
     protected function popSimpleJob($queue)
     {
-        if (!($id = $this->getQueue($queue)->pop())) return;
+        if (!($id = $this->getSimplePool($queue)->pop())) return;
 
         if ($job = $this->getJob($id)) {
             $job['id'] = $id;
+            $this->deleteJob($id);
         }
 
         return $job;
@@ -388,7 +485,7 @@ class Yiiq extends CApplicationComponent
      */
     protected function popScheduledJob($queue)
     {
-        $schedule = $this->getSchedule($queue);
+        $schedule = $this->getScheduledPool($queue);
         $redis = Yii::app()->redis;
 
         $ids = $redis->zrangebyscore($schedule->name, 0, time(), 'LIMIT', 0, 1);
@@ -399,7 +496,6 @@ class Yiiq extends CApplicationComponent
 
         if ($job = $this->getJob($id)) {
             $job['id'] = $id;
-
             $this->deleteJob($id);
         }
 
@@ -414,7 +510,7 @@ class Yiiq extends CApplicationComponent
      */
     protected function popRepeatableJob($queue)
     {
-        $repeatable = $this->getRepeatable($queue);
+        $repeatable = $this->getRepeatablePool($queue);
         $redis = Yii::app()->redis;
 
         $ids = $redis->zrangebyscore($repeatable->name, 0, time(), 'LIMIT', 0, 1);
@@ -467,39 +563,6 @@ class Yiiq extends CApplicationComponent
         }
 
         return $removed;
-    }
-
-    public function checkJob($id)
-    {
-        if (
-            !($job = $this->getJob($id))
-            || !isset($job['queue']) 
-            || !isset($job['type'])
-        ) {
-            $this->deleteJob($id);
-            return false;
-        }
-
-        switch ($job['type']) {
-            case self::TYPE_SIMPLE:
-                $pool = $this->getQueue($job['queue']);
-                break;
-
-            case self::TYPE_SCHEDULED:
-                $pool = $this->getSchedule($job['queue']);
-                break;
-
-            case self::TYPE_REPEATABLE:
-                $pool = $this->getRepeatable($job['queue']);
-                break;
-        }
-
-        if (!$pool->contains($id)) {
-            $this->deleteJob($id);
-            return false;
-        }
-
-        return true;
     }
 
     /**
