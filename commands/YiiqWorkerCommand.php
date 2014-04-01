@@ -107,14 +107,8 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      * 
      * @param  string $jobId
      */
-    protected function runJob($jobId)
+    protected function runJob($job)
     {
-        $job = Yii::app()->yiiq->getJob($jobId);
-        if (!$job) {
-            Yii::log('Job '.$jobId.' is missing.', CLogger::LEVEL_WARNING);
-            return;
-        }
-
         // If we're in parent process, wait for child thread to get initialized
         // and then return
         if (pcntl_fork() !== 0) {
@@ -129,19 +123,28 @@ class YiiqWorkerCommand extends YiiqBaseCommand
 
         $this->getChildPool()->add($childPid);
 
-        Yii::trace('Forked process for job '.$jobId.'.');
-        if (!is_array($job)) Yii::trace($job);
+        Yii::trace('Forked process for job '.$job['id'].'.');
 
         extract($job);
-        Yii::trace('Starting job '.$this->queue.':'.$jobId.' ('.$class.')...');
+        Yii::trace('Starting job '.$this->queue.':'.$id.' ('.$class.')...');
 
-        $job = new $class($this->queue, $jobId);
-        $job->execute($args);
+        $e = null;
+        try {
+            $job = new $class($this->queue, $type, $id);
+            $job->execute($args);
+        }
+        catch (CException $e) {
 
-        Yii::trace('Job '.$this->queue.':'.$jobId.' done.');
-        Yii::app()->yiiq->deleteJob($jobId);
+        }
 
         $this->getChildPool()->remove($childPid);
+
+        if (!$e) {
+            Yii::trace('Job '.$this->queue.':'.$id.' done.');
+        }
+        else {
+            throw $e;
+        }
 
         exit(0);
     }
@@ -171,11 +174,13 @@ class YiiqWorkerCommand extends YiiqBaseCommand
                 !$this->shutdown
                 && $this->hasFreeThread()
             ) {
-                if (!($jobId = Yii::app()->yiiq->popJobId($this->queue))) break;
-                $this->runJob($jobId);
+                if (!($job = Yii::app()->yiiq->popJob($this->queue))) break;
+                $this->runJob($job);
             }
 
             if ($this->shutdown) break;
+
+            Yii::app()->yiiq->checkPidPool($this->getChildPool());
 
             if ($this->getThreadsCount()) {
                 pcntl_waitpid(-1, $status);

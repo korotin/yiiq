@@ -30,6 +30,7 @@ class Yiiq extends CApplicationComponent
      */
     const TYPE_SIMPLE       = 'simple';
     const TYPE_SCHEDULED    = 'scheduled';
+    const TYPE_REPEATABLE   = 'repeatable';
     
     /**
      * Yiiq redis keys prefix.
@@ -47,29 +48,37 @@ class Yiiq extends CApplicationComponent
     protected $pidPool      = null;
 
     /**
-     * Array of job pools.
+     * Array of simple job pools.
      * 
      * @var ARedisSet[]
      */
     protected $queues       = array();
 
     /**
-     * Array of schedules.
+     * Array of scheduled job pools.
      * 
      * @var ARedisSortedSet[]
      */
     protected $schedules    = array();
 
     /**
-     * Serialize job.
+     * Array of repeatable job pools.
      * 
+     * @var ARedisSortedSet[]
+     */
+    protected $repeatables  = array();
+
+    /**
+     * Serialize job.
+     *
+     * @param  string $queue
      * @param  string $class
      * @param  array[optional]  $args
      * @return string
      */
-    protected function serializeJob($class, array $args= array())
+    protected function serializeJob($queue, $class, array $args= array())
     {
-        return CJSON::encode(compact('class', 'args'));
+        return CJSON::encode(compact('queue', 'class', 'args'));
     }
 
     /**
@@ -159,6 +168,19 @@ class Yiiq extends CApplicationComponent
         return $this->schedules[$queue];
     }
 
+    public function getRepeatable($queue = self::DEFAULT_QUEUE)
+    {
+        if (!$queue) {
+            $queue = self::DEFAULT_QUEUE;
+        }
+
+        if (!isset($this->repeatables[$queue])) {
+            $this->repeatables[$queue] = new ARedisSortedSet($this->prefix.':queue:'.$queue.':'.self::TYPE_REPEATABLE);
+        }
+
+        return $this->repeatables[$queue];
+    }
+
     /**
      * Does job with given id exists.
      * 
@@ -197,13 +219,13 @@ class Yiiq extends CApplicationComponent
         Yii::app()->redis->getClient()->del($key);
     }
 
-    protected function saveJob($id, $class, $args)
+    protected function saveJob($queue, $id, $class, $args)
     {
         if ($id && $this->hasJob($id)) return null;
         
         $id     = $id ?: $this->generateJobId();
         $key    = $this->getJobKey($id);
-        $job    = $this->serializeJob($class, $args);
+        $job    = $this->serializeJob($queue, $class, $args);
 
         Yii::app()->redis->getClient()->set($key, $job);
 
@@ -221,7 +243,7 @@ class Yiiq extends CApplicationComponent
      */
     public function enqueueJob($class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
     {
-        if ($id = $this->saveJob($id, $class, $args)) {
+        if ($id = $this->saveJob($queue, $id, $class, $args)) {
             $this->getQueue($queue)->add($id);
         }
 
@@ -229,7 +251,7 @@ class Yiiq extends CApplicationComponent
     }
 
     /**
-     * Create a job in given queue wich will be executed in given time.
+     * Create a job in given queue wich will be executed at given time.
      * 
      * @param  int $timestamp           timestamp to execute job at
      * @param  string $class            job class extended from YiiqBaseJob
@@ -240,8 +262,59 @@ class Yiiq extends CApplicationComponent
      */
     public function enqueueJobAt($timestamp, $class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
     {
-        if ($id = $this->saveJob($id, $class, $args)) {
+        if ($id = $this->saveJob($queue, $id, $class, $args)) {
             $this->getSchedule($queue)->add($id, $timestamp);
+        }
+
+        return $id;
+    }
+
+    /**
+     * Create a job in given queue wich will be executed after given amount of seconds.
+     * 
+     * @param  int $seconds             amount of seconds
+     * @param  string $class            job class extended from YiiqBaseJob
+     * @param  array[optional] $args    values for job object properties
+     * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
+     * @param  string[optional] $id     globally unique job id             
+     * @return mixed                    job id or null if job with same id extists
+     */
+    public function enqueueJobIn($seconds, $class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
+    {
+        if ($id = $this->saveJob($queue, $id, $class, $args)) {
+            $this->getSchedule($queue)->add($id, time() + $seconds);
+        }
+
+        return $id;
+    }
+
+    /**
+     * Get interval for repeatable job.
+     * 
+     * @param  string $id
+     * @return int
+     */
+    protected function getJobInterval($id)
+    {
+        return (int) Yii::app()->redis->get($this->prefix.':interval:'.$id);
+    }
+
+    /**
+     * Set interval for repeatable job.
+     * 
+     * @param string $id
+     * @param int $interval
+     */
+    protected function setJobInterval($id, $interval)
+    {
+        Yii::app()->redis->set($this->prefix.':interval:'.$id, $interval);
+    }
+
+    public function enqueueRepeatableJob($id, $interval, $class, array $args = array(), $queue = self::DEFAULT_QUEUE)
+    {
+        if ($id = $this->saveJob($queue, $id, $class, $args)) {
+            $this->setJobInterval($id, $interval);
+            $this->getRepeatable($queue)->add($id, time() + $seconds);
         }
 
         return $id;
@@ -254,7 +327,7 @@ class Yiiq extends CApplicationComponent
      * @param  string $queue
      * @return mixed            job id or null
      */
-    protected function popScheduledJobId($queue)
+    protected function popScheduledJob($queue)
     {
         $schedule = $this->getSchedule($queue);
         $redis = Yii::app()->redis;
@@ -265,7 +338,39 @@ class Yiiq extends CApplicationComponent
         $id = reset($ids);
         $redis->zrem($schedule->name, $id);
 
-        return $id;
+        if ($job = $this->getJob($id)) {
+            $job['id'] = $id;
+            $job['type'] = self::TYPE_SCHEDULED;
+
+            $this->deleteJob($id);
+        }
+
+        return $job;
+    }
+
+    /**
+     * Pop repeatable job id from given queue.
+     * 
+     * @param  string $queue
+     * @return mixed            job id or null
+     */
+    protected function popRepeatableJob($queue)
+    {
+        $repeatable = $this->getRepeatable($queue);
+        $redis = Yii::app()->redis;
+
+        $ids = $redis->zrangebyscore($repeatable->name, 0, time(), 'LIMIT', 0, 1);
+        if (!$ids) return;
+        
+        $id = reset($ids);
+        $repeatable->add($id, time() + $this->getJobInterval($id));
+
+        if ($job = $this->getJob($id)) {
+            $job['id'] = $id;
+            $job['type'] = self::TYPE_REPEATABLE;
+        }
+
+        return $job;
     }
 
     /**
@@ -274,9 +379,16 @@ class Yiiq extends CApplicationComponent
      * @param  string $queue
      * @return mixed            job id or null
      */
-    protected function popSimpleJobId($queue)
+    protected function popSimpleJob($queue)
     {
-        return $this->getQueue($queue)->pop();
+        if (!($id = $this->getQueue($queue)->pop())) return;
+
+        if ($job = $this->getJob($id)) {
+            $job['id'] = $id;
+            $job['type'] = self::TYPE_SIMPLE;
+        }
+
+        return $job;
     }
 
     /**
@@ -285,10 +397,18 @@ class Yiiq extends CApplicationComponent
      * @param  string[optional] $queue Yiiq::DEFAULT_QUEUE by default
      * @return string
      */
-    public function popJobId($queue = self::DEFAULT_QUEUE)
+    public function popJob($queue = self::DEFAULT_QUEUE)
     {
-        $id = $this->popScheduledJobId($queue) ?: $this->popSimpleJobId($queue);
-        return $id;
+        $methods = array(
+            'popScheduledJob', 
+            'popRepeatableJob', 
+            'popSimpleJob',
+        );
+
+        foreach ($methods as $method) {
+            $id = $this->$method($queue);
+            if ($id) return $id;
+        }
     }
 
     /**
@@ -296,7 +416,7 @@ class Yiiq extends CApplicationComponent
      * 
      * @param  ARedisSet $pool
      */
-    protected function checkPidPool(ARedisSet $pool)
+    public function checkPidPool(ARedisSet $pool)
     {
         $pids = $pool->getData();
         foreach ($pids as $pid) {

@@ -24,16 +24,24 @@ abstract class YiiqBaseJob
     protected $queue;
 
     /**
+     * Job type.
+     * 
+     * @var string
+     */
+    protected $type;
+
+    /**
      * Job id.
      * 
      * @var string
      */
-    protected $jobId;
+    protected $id;
 
-    public function __construct($queue, $jobId)
+    public function __construct($queue, $type, $id)
     {
         $this->queue = $queue;
-        $this->jobId = $jobId;
+        $this->type = $type;
+        $this->id = $id;
     }
 
     /**
@@ -43,7 +51,7 @@ abstract class YiiqBaseJob
 
     /**
      * This method is invoked by worker.
-     * It set job arguments and runs job itself.
+     * It sets job arguments and runs job itself.
      * 
      * @param  array $args
      */
