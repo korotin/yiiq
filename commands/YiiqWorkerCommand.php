@@ -133,7 +133,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
             $job = new $class($this->queue, $type, $id);
             $job->execute($args);
         }
-        catch (CException $e) {
+        catch (Exception $e) {
 
         }
 

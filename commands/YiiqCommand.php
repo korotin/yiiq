@@ -54,5 +54,13 @@ class YiiqCommand extends YiiqBaseCommand
             echo "No pids found.\n";
         }
     }
+
+    /**
+     * Check redis db consistency.
+     */
+    public function actionCheck()
+    {
+        Yii::app()->getComponent('yiiq')->check();
+    }
     
 }
