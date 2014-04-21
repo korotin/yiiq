@@ -116,7 +116,7 @@ class Yiiq extends CApplicationComponent
      * @param  int  $pid
      * @return boolean
      */
-    protected function isPidAlive($pid)
+    public function isPidAlive($pid)
     {
         $pids = null;
         exec('sh -c "ps ax | grep '.((int) $pid).' | grep -v grep"', $pids);

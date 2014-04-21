@@ -48,6 +48,16 @@ class YiiqWorkerCommand extends YiiqBaseCommand
     protected $shutdown = false;
 
     /**
+     * Return queue-to-pid key name.
+     *  
+     * @return string
+     */
+    protected function getWorkerPidName()
+    {
+        return Yii::app()->yiiq->prefix.':workers:'.$this->queue;
+    }
+
+    /**
      * Get child pid pool.
      * 
      * @return ARedisSet
@@ -159,14 +169,23 @@ class YiiqWorkerCommand extends YiiqBaseCommand
     public function actionRun($queue, $threads)
     {
         $this->pid          = posix_getpid();
-        $this->queue        = $queue;
+        $this->queue        = $queue ?: Yiiq::DEFALUT_QUEUE;
         $this->maxThreads   = (int) $threads;
+
+        if (
+            ($oldPid = Yii::app()->redis->get($this->getWorkerPidName()))
+            && (Yii::app()->yiiq->isPidAlive($oldPid))
+        ) {
+            Yii::trace('Worker for queue '.$this->queue.' already running.');
+            exit(1);
+        }
 
         $this->setupSignals();
 
+        Yii::app()->redis->set($this->getWorkerPidName(), $this->pid);
         Yii::app()->yiiq->pidPool->add($this->pid);
 
-        Yii::trace('Started new yiiq worker '.$this->pid.' for queue '.($this->queue ?: Yiiq::DEFALUT_QUEUE).'.');
+        Yii::trace('Started new yiiq worker '.$this->pid.' for queue '.$this->queue.'.');
 
         $status = null;
         while (true) {
@@ -196,7 +215,9 @@ class YiiqWorkerCommand extends YiiqBaseCommand
             Yii::trace($this->getThreadsCount().' threads left.');
         }
 
+        Yii::app()->redis->del($this->getWorkerPidName());
         Yii::app()->yiiq->pidPool->remove($this->pid);
+        
         Yii::trace('Terminated yiiq worker '.$this->pid.'.');
     }
 

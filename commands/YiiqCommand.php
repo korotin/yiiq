@@ -47,6 +47,9 @@ class YiiqCommand extends YiiqBaseCommand
             foreach ($pids as $pid) {
                 echo "Killing $pid... ";
                 posix_kill($pid, SIGTERM);
+                while (Yii::app()->yiiq->isPidAlive($pid)) {
+                    usleep(500000);
+                }
                 echo "Done.\n";
             }
         }
