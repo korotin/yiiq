@@ -199,7 +199,9 @@ class YiiqWorkerCommand extends YiiqBaseCommand
 
             if ($this->shutdown) break;
 
-            if ($this->getThreadsCount()) {
+            // If all child threads are active, wait for one of them to terminate.
+            // Otherwise just sleep for 1 second.
+            if (!$this->hasFreeThread()) {
                 pcntl_waitpid(-1, $status);
             }
             else {

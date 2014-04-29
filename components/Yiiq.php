@@ -119,7 +119,7 @@ class Yiiq extends CApplicationComponent
     public function isPidAlive($pid)
     {
         $pids = null;
-        exec('sh -c "ps ax | grep '.((int) $pid).' | grep -v grep"', $pids);
+        exec('sh -c "ps ax | grep \" '.((int) $pid).' \" | grep -v grep"', $pids);
         return count($pids) > 0;
     }
 
