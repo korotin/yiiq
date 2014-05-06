@@ -31,6 +31,14 @@ class Yiiq extends CApplicationComponent
     const TYPE_SIMPLE       = 'simple';
     const TYPE_SCHEDULED    = 'scheduled';
     const TYPE_REPEATABLE   = 'repeatable';
+
+    /**
+     * Yiiq instance name.
+     * Used in process title.
+     * 
+     * @var string
+     */
+    public $name            = null;
     
     /**
      * Yiiq redis keys prefix.
@@ -39,6 +47,18 @@ class Yiiq extends CApplicationComponent
      * @var string
      */
     public $prefix          = 'yiiq';
+
+    /**
+     * Process title template.
+     * Available placeholders are:
+     *     {name}       - instance name or application path
+     *     {type}       - process type (worker or job)
+     *     {queue}      - queue name
+     *     {message}    - title message
+     * 
+     * @var string
+     */
+    public $titleTemplate   = 'Yiiq [{name}] {type}@{queue}: {message}';
 
     /**
      * Pid pool.

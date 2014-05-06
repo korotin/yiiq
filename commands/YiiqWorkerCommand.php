@@ -16,6 +16,12 @@
 class YiiqWorkerCommand extends YiiqBaseCommand
 {
     /**
+     * Instance name,
+     * 
+     * @var string
+     */
+    protected $instanceName = null;
+    /**
      * Process type displayed in process title.
      * 
      * @var string
@@ -62,7 +68,17 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected function setProcessTitle($title)
     {
-        $title = 'Yiiq ('.Yii::getPathOfAlias('application').' - '.$this->processType.' for '.$this->queue.'): '.$title;
+        $titleTemplate = Yii::app()->yiiq->titleTemplate;
+        if (!$titleTemplate) return;
+
+        $placeholders = array(
+            '{name}'    => $this->instanceName,
+            '{type}'    => $this->processType,
+            '{queue}'   => $this->queue,
+            '{message}' => $title,
+        );
+
+        $title = str_replace(array_keys($placeholders), array_values($placeholders), $titleTemplate);
         if (function_exists('cli_set_process_title')) {
             cli_set_process_title($title);
         }
@@ -153,7 +169,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         $childPid = posix_getpid();
         
         $this->processType = 'job';
-        $this->setProcessTitle('Initializing...');
+        $this->setProcessTitle('initializing');
 
         // Force reconnect to redis
         Yii::app()->redis->setClient(null);
@@ -162,7 +178,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
 
         extract($job);
         Yii::trace('Starting job '.$this->queue.':'.$id.' ('.$class.')...');
-        $this->setProcessTitle('Running job '.$id.' ('.$class.')...');
+        $this->setProcessTitle('executing '.$id.' ('.$class.')');
 
         $e = null;
         try {
@@ -194,11 +210,12 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     public function actionRun($queue, $threads)
     {
+        $this->instanceName = Yii::app()->yiiq->name ?: Yii::getPathOfAlias('application');
         $this->pid          = posix_getpid();
         $this->queue        = $queue ?: Yiiq::DEFALUT_QUEUE;
         $this->maxThreads   = (int) $threads;
 
-        $this->setProcessTitle('Initializing...');
+        $this->setProcessTitle('initializing');
 
         if (
             ($oldPid = Yii::app()->redis->get($this->getWorkerPidName()))
@@ -230,11 +247,11 @@ class YiiqWorkerCommand extends YiiqBaseCommand
             // If all child threads are active, wait for one of them to terminate.
             // Otherwise just sleep for 1 second.
             if (!$this->hasFreeThread()) {
-                $this->setProcessTitle('Waiting for free thread ('.$threads.' threads)...');
+                $this->setProcessTitle('no free threads ('.$threads.' threads)');
                 pcntl_waitpid(-1, $status);
             }
             else {
-                $this->setProcessTitle('Wating for new jobs ('.$this->getThreadsCount().' of '.$threads.' threads)...');
+                $this->setProcessTitle('no new jobs ('.$this->getThreadsCount().' of '.$threads.' threads busy)');
                 sleep(1);
             }
 
@@ -243,15 +260,15 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         }
 
         Yii::trace('Waiting for child threads to terminate...');
-        $this->setProcessTitle('Waiting for child threads to terminate ('.$this->getThreadsCount().' left)...');
+        $this->setProcessTitle('terminating ('.$this->getThreadsCount().' threads left)');
         while (pcntl_waitpid(-1, $status) > 0) {
             $threadsLeft = $this->getThreadsCount();
             Yii::trace($threadsLeft.' threads left.');
             if ($threadsLeft) {
-                $this->setProcessTitle('Waiting for child threads to terminate ('.$threadsLeft.' left)...');
+                $this->setProcessTitle('terminating ('.$threadsLeft.' threads left)');
             }
             else {
-                $this->setProcessTitle('Terminating...');
+                $this->setProcessTitle('terminating');
             }
         }
 
