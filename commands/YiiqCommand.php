@@ -25,8 +25,17 @@ class YiiqCommand extends YiiqBaseCommand
     {
         Yii::app()->getComponent('yiiq');
 
+        // Create array of unique queue names.
+        // Split each --queue value by comma and then combine all values
+        // into single-dimension array.
         $queues = $queue ?: array(Yiiq::DEFAULT_QUEUE);
+        foreach ($queues as $index => $queue) {
+            $queues[$index] = preg_split('/\s*\,\s*/', $queue);
+        }
+        $queues = call_user_func_array('array_merge', array_merge($queues));
+        $queues = array_unique($queues);
         $stringifiedQueues = implode(', ', $queues);
+
         $threads = (int)$threads ?: Yiiq::DEFAULT_THREADS;
 
         $command = 'nohup sh -c "'.escapeshellarg(Yii::app()->basePath.'/yiic').' yiiqWorker run ';
