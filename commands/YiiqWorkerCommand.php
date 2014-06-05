@@ -281,6 +281,8 @@ class YiiqWorkerCommand extends YiiqBaseCommand
             ) {
                 // Look for new job.
                 // Iterate over all watched queues, stop when new job found.
+                // If the previous job was found in first queue, iteration will be started from second
+                // queue.
                 for ($index = 0; $index < $count; $index++) {
                     $queue = $this->queues[($index + $offset) % $count];
                     if ($job = Yii::app()->yiiq->popJob($queue)) {
