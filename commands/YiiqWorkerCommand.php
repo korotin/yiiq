@@ -218,9 +218,9 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      * after the fork get initialized.
      *
      * @param  string $queue
-     * @param  string $jobId
+     * @param  YiiqJobData $job
      */
-    protected function runJob($queue, $job)
+    protected function runJob($queue, $jobData)
     {
         // If we're in parent process, wait for child thread to get initialized
         // and then return
@@ -239,14 +239,21 @@ class YiiqWorkerCommand extends YiiqBaseCommand
 
         $this->getChildPool()->add($childPid);
 
-        extract($job);
-        Yii::trace('Starting job '.$queue.':'.$id.' ('.$class.')...');
-        $this->setProcessTitle('executing '.$id.' ('.$class.')', $queue);
+        Yii::trace('Starting job '.$jobData->queue.':'.$jobData->id.' ('.$jobData->class.')...');
+        $this->setProcessTitle('executing '.$jobData->id.' ('.$jobData->class.')', $jobData->queue);
+        Yii::app()->yiiq->markAsStarted($jobData, $childPid);
 
         $e = null;
         try {
-            $job = new $class($queue, $type, $id);
-            $job->execute($args);
+            Yii::app()->yiiq->onBeforeJob();
+
+            $class = $jobData->class;
+            $job = new $class($jobData->queue, $jobData->type, $jobData->id);
+            $job->execute($jobData->args);
+
+            Yii::app()->yiiq->markAsCompleted($jobData);
+
+            Yii::app()->yiiq->onAfterJob();
         }
         catch (Exception $e) {
             // Exception is caught, but we'll try to exit child thread correctly
@@ -255,7 +262,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         $this->getChildPool()->remove($childPid);
 
         if (!$e) {
-            Yii::trace('Job '.$queue.':'.$id.' done.');
+            Yii::trace('Job '.$jobData->queue.':'.$jobData->id.' done.');
         }
         else {
             throw $e;
@@ -285,17 +292,17 @@ class YiiqWorkerCommand extends YiiqBaseCommand
                 // queue.
                 for ($index = 0; $index < $count; $index++) {
                     $queue = $this->queues[($index + $offset) % $count];
-                    if ($job = Yii::app()->yiiq->popJob($queue)) {
+                    if ($jobData = Yii::app()->yiiq->popJob($queue)) {
                         $offset = ($index + 1) % $count;
                         break;
                     }
                 }
                 
                 // No job was found - exit loop.
-                if (!$job) break;
+                if (!$jobData) break;
 
                 // Execute found job.
-                $this->runJob($queue, $job);
+                $this->runJob($queue, $jobData);
             }
 
             if ($this->shutdown) break;
@@ -313,6 +320,10 @@ class YiiqWorkerCommand extends YiiqBaseCommand
 
             // Check for dead pids in child pool
             Yii::app()->yiiq->checkPidPool($this->getChildPool());
+
+            foreach ($this->queues as $queue) {
+                Yii::app()->yiiq->checkStoppedJobs($queue);
+            }
         }
     }
     

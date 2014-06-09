@@ -49,6 +49,15 @@ class Yiiq extends CApplicationComponent
     public $prefix          = 'yiiq';
 
     /**
+     * Maximum amount of faults per job.
+     * Non-repeatable job will be removed if this limit is exceeded.
+     * False value means no limit (which is not recommended).
+     * 
+     * @var integer
+     */
+    public $maxFaults       = 5;
+
+    /**
      * Process title template.
      * Available placeholders are:
      *     {name}       - instance name or application path
@@ -89,30 +98,18 @@ class Yiiq extends CApplicationComponent
     protected $repeatables  = array();
 
     /**
-     * Serialize job.
-     *
-     * @param  string $queue
-     * @param  string $type
-     * @param  string $class
-     * @param  array  $args
-     * @param  int $created
-     * @return string
+     * Array of executing job pools.
+     * 
+     * @var ARedisSortedSet[]
      */
-    protected function serializeJob($queue, $type, $class, array $args, $created)
-    {
-        return CJSON::encode(compact('queue', 'type', 'class', 'args', 'created'));
-    }
+    protected $executing = array();
 
     /**
-     * Deserialize job.
+     * Array of failed job pools.
      * 
-     * @param  string $job
-     * @return array
+     * @var ARedisSet[]
      */
-    protected function deserealizeJob($job)
-    {
-        return CJSON::decode($job);
-    }
+    protected $failed = array();
 
     /**
      * Get redis job key for given id.
@@ -220,12 +217,42 @@ class Yiiq extends CApplicationComponent
     }
 
     /**
+     * Get executing job pool for given queue.
+     * 
+     * @param  string $queue
+     * @return ARedisSortedSet
+     */
+    protected function getExcutingPool($queue = self::DEFAULT_QUEUE)
+    {
+        if (!isset($this->executing[$queue])) {
+            $this->executing[$queue] = new ARedisSortedSet($this->prefix.':executing:'.$queue);
+        }
+
+        return $this->executing[$queue];
+    }
+
+    /**
+     * Get failed job pool for given queue.
+     * 
+     * @param  string $queue
+     * @return ARedisSet
+     */
+    protected function getFailedPool($queue = self::DEFAULT_QUEUE)
+    {
+        if (!isset($this->failed[$queue])) {
+            $this->failed[$queue] = new ARedisSet($this->prefix.':failed:'.$queue);
+        }
+
+        return $this->failed[$queue];
+    }
+
+    /**
      * Get interval for repeatable job.
      * 
      * @param  string $id
      * @return int
      */
-    protected function getJobInterval($id)
+    protected function getJobDataInterval($id)
     {
         return (int) Yii::app()->redis->get($this->prefix.':interval:'.$id);
     }
@@ -267,15 +294,41 @@ class Yiiq extends CApplicationComponent
      * Get job data by id.
      * 
      * @param  string $id
-     * @return mixed        array with class and args fields or null if no job found
+     * @return mixed  YiiqJobData or null
      */
-    public function getJob($id)
+    public function getJobData($id)
     {
         $key = $this->getJobKey($id);
         $job = Yii::app()->redis->getClient()->get($key);
         if (!$job) return;
 
-        return $this->deserealizeJob($job); 
+        return new YiiqJobData($job); 
+    }
+
+    /**
+     * Save job data to redis.
+     * 
+     * @param  YiiqJobData  $jobData
+     * @param  boolean $overwrite[optional] overwrite existing job, default is false
+     * @return mixed            id if job is saved or null
+     */
+    protected function saveJobData(YiiqJobData $jobData, $overwrite = false)
+    {
+        if (
+            $jobData->id 
+            && $this->hasJob($jobData->id) 
+            && !$overwrite
+        ) return;
+
+        $jobData->id = $jobData->id ?: $this->generateJobId();
+        $jobData->created = time();
+        
+        Yii::app()->redis->getClient()->set(
+            $this->getJobKey($jobData->id), 
+            (string) $jobData
+        );
+
+        return $jobData->id;
     }
 
     /**
@@ -320,21 +373,21 @@ class Yiiq extends CApplicationComponent
     public function deleteJob($id)
     {
         $redis = Yii::app()->redis;
-        $job = $this->getJob($id);
+        $job = $this->getJobData($id);
         $key = $this->getJobKey($id);
 
-        if (isset($job['queue']) && isset($job['type'])) {
-            switch ($job['type']) {
+        if (isset($job->queue) && isset($job->type)) {
+            switch ($job->type) {
                 case self::TYPE_SIMPLE:
-                    $this->deleteSimpleJob($job['queue'], $id);
+                    $this->deleteSimpleJob($job->queue, $id);
                     break;
 
                 case self::TYPE_SCHEDULED:
-                    $this->deleteScheduledJob($job['queue'], $id);
+                    $this->deleteScheduledJob($job->queue, $id);
                     break;
 
                 case self::TYPE_REPEATABLE:
-                    $this->deleteRepeatableJob($job['queue'], $id);
+                    $this->deleteRepeatableJob($job->queue, $id);
                     break;
             }
         }
@@ -343,62 +396,40 @@ class Yiiq extends CApplicationComponent
     }
 
     /**
-     * Save job data to redis.
-     * 
-     * @param  string  $queue
-     * @param  string  $type
-     * @param  string  $id
-     * @param  string  $class
-     * @param  array  $args
-     * @param  boolean $overwrite[optional] overwrite existing job, default is false
-     * @return mixed            id if job is saved or null
-     */
-    protected function saveJob($queue, $type, $id, $class, $args, $overwrite = false)
-    {
-        if ($id && $this->hasJob($id) && !$overwrite) return;
-        
-        $id     = $id ?: $this->generateJobId();
-        $key    = $this->getJobKey($id);
-        $job    = $this->serializeJob($queue, $type, $class, $args, time());
-
-        Yii::app()->redis->getClient()->set($key, $job);
-
-        return $id;
-    }
-
-    /**
      * Check whether job with given id is correct.
      * If job is incorrect, it will be deleted.
      * 
      * @param  string $id
-     * @return bool         true if job is correct
+     * @return bool   true if job is correct
      */
     protected function checkJob($id)
     {
         if (
-            !($job = $this->getJob($id))
-            || !isset($job['queue']) 
-            || !isset($job['type'])
+            !($jobData = $this->getJobData($id))
+            || !$jobData->queue 
+            || !$jobData->type
         ) {
             $this->deleteJob($id);
             return false;
         }
 
-        switch ($job['type']) {
+        switch ($jobData->type) {
             case self::TYPE_SIMPLE:
-                $pool = $this->getSimplePool($job['queue']);
+                $pool = $this->getSimplePool($jobData->queue);
                 break;
 
             case self::TYPE_SCHEDULED:
-                $pool = $this->getScheduledPool($job['queue']);
+                $pool = $this->getScheduledPool($jobData->queue);
                 break;
 
             case self::TYPE_REPEATABLE:
-                $pool = $this->getRepeatablePool($job['queue']);
+                $pool = $this->getRepeatablePool($jobData->queue);
                 break;
         }
 
-        if (!$pool->contains($id)) {
+        $executingPool = $this->getExcutingPool($jobData->queue);
+
+        if (!$pool->contains($id) && !$executingPool->contains($id)) {
             $this->deleteJob($id);
             return false;
         }
@@ -407,17 +438,89 @@ class Yiiq extends CApplicationComponent
     }
 
     /**
+     * Reenqueue job by id.
+     * 
+     * @param  string $id
+     * @return bool   true if job was restored
+     */
+    protected function restoreJob($id)
+    {
+        if (
+            !($jobData = $this->getJobData($id))
+            || !$jobData->queue 
+            || !$jobData->type
+        ) {
+            return false;
+        }
+
+        $jobData->faults++;
+        $jobData->lastFailed = time();
+
+        if (
+            $this->maxFaults 
+            && $jobData->faults >= $this->maxFaults
+            && $jobData->type !== self::TYPE_REPEATABLE
+        ) {
+            $this->deleteJob($id);
+            $this->getFailedPool($jobData->queue)->add((string) $jobData);
+
+            return false;
+        }
+
+        $this->saveJobData($jobData, true);
+
+        switch ($jobData->type) {
+            case self::TYPE_SIMPLE:
+                $this->getSimplePool($jobData->queue)->add($jobData->id);
+                break;
+
+            case self::TYPE_SCHEDULED:
+                $pool = $this->getScheduledPool($jobData->queue)->add($jobData->id, $jobData->timestamp);
+                break;
+
+            case self::TYPE_REPEATABLE:
+                $pool = $this->getRepeatablePool($jobData->queue)->add($jobData->id, time());
+                break;
+        }
+
+        return true;
+    }
+
+    /**
+     * Event triggered in forked process before executing job.
+     */
+    public function onBeforeJob()
+    {
+        $this->raiseEvent('onBeforeJob', new CEvent($this));
+    }
+
+    /**
+     * Event triggered in forked process after executing job.
+     */
+    public function onAfterJob()
+    {
+        $this->raiseEvent('onAfterJob', new CEvent($this));
+    }
+
+    /**
      * Create a simple job in given queue.
      *
      * @param  string $class            job class extended from YiiqBaseJob
-     * @param  array[optional] $args    values for job object properties
+     * @param  array[optional]  $args   values for job object properties
      * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
      * @param  string[optional] $id     globally unique job id             
      * @return mixed                    job id or null if job with same id extists
      */
     public function enqueueJob($class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
     {
-        if ($id = $this->saveJob($queue, self::TYPE_SIMPLE, $id, $class, $args)) {
+        $jobData = new YiiqJobData;
+        $jobData->id = $id;
+        $jobData->queue = $queue;
+        $jobData->type = self::TYPE_SIMPLE;
+        $jobData->class = $class;
+        $jobData->args = $args;
+
+        if ($id = $this->saveJobData($jobData)) {
             $this->getSimplePool($queue)->add($id);
         }
 
@@ -429,14 +532,22 @@ class Yiiq extends CApplicationComponent
      * 
      * @param  int $timestamp           timestamp to execute job at
      * @param  string $class            job class extended from YiiqBaseJob
-     * @param  array[optional] $args    values for job object properties
+     * @param  array[optional]  $args   values for job object properties
      * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
      * @param  string[optional] $id     globally unique job id             
      * @return mixed                    job id or null if job with same id extists
      */
     public function enqueueJobAt($timestamp, $class, array $args = array(), $queue = self::DEFAULT_QUEUE, $id = null)
     {
-        if ($id = $this->saveJob($queue, self::TYPE_SCHEDULED, $id, $class, $args)) {
+        $jobData = new YiiqJobData;
+        $jobData->id = $id;
+        $jobData->queue = $queue;
+        $jobData->type = self::TYPE_SCHEDULED;
+        $jobData->class = $class;
+        $jobData->args = $args;
+        $jobData->timestamp = $timestamp;
+
+        if ($id = $this->saveJobData($jobData)) {
             $this->getScheduledPool($queue)->add($id, $timestamp);
         }
 
@@ -448,7 +559,7 @@ class Yiiq extends CApplicationComponent
      * 
      * @param  int $interval            amount of seconds to wait before execution
      * @param  string $class            job class extended from YiiqBaseJob
-     * @param  array[optional] $args    values for job object properties
+     * @param  array[optional]  $args   values for job object properties
      * @param  string[optional] $queue  Yiiq::DEFAULT_QUEUE by default
      * @param  string[optional] $id     globally unique job id             
      * @return mixed                    job id or null if job with same id extists
@@ -465,18 +576,26 @@ class Yiiq extends CApplicationComponent
      * Unlike other job types repeatable job requires $id to be set.
      * If job with given id already exists, it will be overwritten.
      * 
-     * @param  string $id
-     * @param  integer $interval
-     * @param  string $class
-     * @param  array  $args[optional]
-     * @param  string $queue[optional]
+     * @param  string       $id
+     * @param  integer      $interval
+     * @param  string       $class
+     * @param  array        $args[optional]
+     * @param  string       $queue[optional]
      * @return string
      */
     public function enqueueRepeatableJob($id, $interval, $class, array $args = array(), $queue = self::DEFAULT_QUEUE)
     {
-        $this->saveJob($queue, self::TYPE_REPEATABLE, $id, $class, $args, true);
-
         $interval = (int) floor($interval);
+
+        $jobData = new YiiqJobData;
+        $jobData->id = $id;
+        $jobData->queue = $queue;
+        $jobData->type = self::TYPE_REPEATABLE;
+        $jobData->class = $class;
+        $jobData->args = $args;
+        $jobData->interval = $interval;
+
+        $this->saveJobData($jobData, true);
         $this->setJobInterval($id, $interval);
         $this->getRepeatablePool($queue)->add($id, time());
 
@@ -486,27 +605,22 @@ class Yiiq extends CApplicationComponent
     /**
      * Pop simple job id from given queue.
      * 
-     * @param  string $queue
-     * @return mixed            job id or null
+     * @param  string       $queue
+     * @return mixed        YiiqJobData or null
      */
     protected function popSimpleJob($queue)
     {
         if (!($id = $this->getSimplePool($queue)->pop())) return;
 
-        if ($job = $this->getJob($id)) {
-            $job['id'] = $id;
-            $this->deleteJob($id);
-        }
-
-        return $job;
+        return $this->getJobData($id);
     }
 
     /**
      * Pop scheduled job id from given queue.
      * FIXME this action is not atomic
      * 
-     * @param  string $queue
-     * @return mixed            job id or null
+     * @param  string       $queue
+     * @return mixed        YiiqJobData or null
      */
     protected function popScheduledJob($queue)
     {
@@ -519,19 +633,14 @@ class Yiiq extends CApplicationComponent
         $id = reset($ids);
         $redis->zrem($schedule->name, $id);
 
-        if ($job = $this->getJob($id)) {
-            $job['id'] = $id;
-            $this->deleteJob($id);
-        }
-
-        return $job;
+        return $this->getJobData($id);
     }
 
     /**
      * Pop repeatable job id from given queue.
      * 
-     * @param  string $queue
-     * @return mixed            job id or null
+     * @param  string       $queue
+     * @return mixed        YiiqJobData or null
      */
     protected function popRepeatableJob($queue)
     {
@@ -542,20 +651,16 @@ class Yiiq extends CApplicationComponent
         if (!$ids) return;
         
         $id = reset($ids);
-        $repeatable->add($id, time() + $this->getJobInterval($id));
+        $repeatable->add($id, time() + $this->getJobDataInterval($id));
 
-        if ($job = $this->getJob($id)) {
-            $job['id'] = $id;
-        }
-
-        return $job;
+        return $this->getJobData($id);
     }
 
     /**
      * Pop schedlued or simple job id from given queue.
      * 
      * @param  string[optional] $queue Yiiq::DEFAULT_QUEUE by default
-     * @return string
+     * @return array
      */
     public function popJob($queue = self::DEFAULT_QUEUE)
     {
@@ -566,21 +671,48 @@ class Yiiq extends CApplicationComponent
         );
 
         foreach ($methods as $method) {
-            $id = $this->$method($queue);
-            if ($id) return $id;
+            $jobData = $this->$method($queue);
+            if ($jobData) return $jobData;
+        }
+    }
+
+    /**
+     * Mark job as started.
+     * Job id will be added to executing pool for current queue.
+     * 
+     * @param  YiiqJobData  $jobData
+     * @param  int          $pid        forked worker pid
+     */
+    public function markAsStarted(YiiqJobData $jobData, $pid)
+    {
+        $this->getExcutingPool($jobData->queue)->add($jobData->id, $pid);
+    }
+
+    /**
+     * Mark job as completed.
+     * Jod id will be removed from exetuting pool and job data will be deleted
+     * for non-repeatable jobs.
+     * 
+     * @param  YiiqJobData  $jobData
+     */
+    public function markAsCompleted(YiiqJobData $jobData)
+    {
+        $this->getExcutingPool($jobData->queue)->remove($jobData->id);
+        if ($jobData->type !== self::TYPE_REPEATABLE) {
+            $this->deleteJob($jobData->id);
         }
     }
 
     /**
      * Remove dead process pids from redis set.
      * 
-     * @param  ARedisSet $pool
-     * @return int              amount of dead pids
+     * @param  ARedisSet    $pool
+     * @return int          amount of dead pids
      */
     public function checkPidPool(ARedisSet $pool)
     {
         $removed = 0;
-        $pids = $pool->getData();
+        $pids = $pool->getData(true);
         foreach ($pids as $pid) {
             if ($this->isPidAlive($pid)) continue;
             $pool->remove($pid);
@@ -591,9 +723,33 @@ class Yiiq extends CApplicationComponent
     }
 
     /**
+     * Check for stopped jobs ib given queue.
+     * 
+     * @param  string $queue
+     * @return array            [found jobs, restored jobs]
+     */
+    public function checkStoppedJobs($queue)
+    {
+        $pool = $this->getExcutingPool($queue);
+
+        $found = 0;
+        $restored = 0;
+        $jobs = $pool->getData(true);
+        foreach ($jobs as $id => $pid) {
+            if ($this->isPidAlive($pid)) continue;
+            $pool->remove($id);
+            $found++;
+            if ($this->restoreJob($id)) $restored++;
+        }
+
+        return array($found, $restored);
+    }
+
+    /**
      * Check redis db consistency.
      * 
-     * Remove dead worker pids from pid pool.
+     * Remove dead worker pids from pid pool, remove lost jobs 
+     * and restore stopped jobs.
      */
     public function check($log = true)
     {
@@ -624,6 +780,22 @@ class Yiiq extends CApplicationComponent
             $lostJobs++;
         }
         if ($log) echo "$lostJobs found.\n";
+
+        if ($log) echo "Checking for stopped jobs... ";
+        $keys = Yii::app()->redis->keys($this->prefix.':executing:*');
+
+        $foundJobs = 0;
+        $restoredJobs = 0;
+        foreach ($keys as $key) {
+            $queue = null;
+            if (!preg_match('/\:([^:]+)$/', $key)) continue;
+            $queue = $queue[1];
+
+            $result = $this->checkStoppedJobs($queue);
+            $foundJobs += $result[0];
+            $restoredJobs += $result[1];
+        }
+        if ($log) echo "$foundJobs found, $restoredJobs restored.\n";
     }
 
 }

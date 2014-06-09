@@ -12,7 +12,8 @@
         "classmap": [
             "commands/",
             "components/",
-            "jobs/"
+            "jobs/",
+            "models/"
         ]
     },
     "require": {

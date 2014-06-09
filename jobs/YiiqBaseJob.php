@@ -57,8 +57,10 @@ abstract class YiiqBaseJob
      */
     public function execute($args)
     {
-        foreach ($args as $k => $v) {
-            $this->$k = $v;
+        if ($args && is_array($args)) {
+            foreach ($args as $k => $v) {
+                $this->$k = $v;
+            }
         }
 
         $this->run();
