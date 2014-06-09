@@ -330,7 +330,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         $this->queues       = $queue;
         $this->stringifiedQueues = $this->stringifyQueues($this->queues);
         $this->maxThreads   = (int) $threads;
-
+        
         $this->setProcessTitle('initializing');
 
         $this->checkRunningWorkers();
