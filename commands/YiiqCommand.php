@@ -37,13 +37,14 @@ class YiiqCommand extends YiiqBaseCommand
         $queues = array_unique($queues);
         $stringifiedQueues = implode(', ', $queues);
 
-        $threads = (int)$threads ?: Yiiq::DEFAULT_THREADS;
-        if (!$log) {
-            $log = '/dev/null';
-        }
-        else {
-            $log = Yii::getPathOfAlias('application.runtime').DIRECTORY_SEPARATOR.$log;
-        }
+        // Set threads value.
+        $threads = abs((int) $threads) ?: Yiiq::DEFAULT_THREADS;
+
+        // Set log file name if $log is not empty, otherwise disable error logging.
+        $log = 
+            $log
+                ? Yii::getPathOfAlias('application.runtime').DIRECTORY_SEPARATOR.$log
+                : '/dev/null';
 
         $command = 'nohup sh -c "'.escapeshellarg(Yii::app()->basePath.'/yiic').' yiiqWorker run ';
         foreach ($queues as $queue) {
