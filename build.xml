@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="yiiq" default="help">
+
+    <target name="help">
+    </target>
+
+    <target name="test">
+        <exec command="cd tests &amp;&amp; phpunit unit" passthru="true" checkreturn="true"/>
+    </target>
+
+</project>
