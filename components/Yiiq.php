@@ -222,7 +222,7 @@ class Yiiq extends CApplicationComponent
      * @param  string $queue
      * @return ARedisSortedSet
      */
-    protected function getExcutingPool($queue = self::DEFAULT_QUEUE)
+    protected function getExecutingPool($queue = self::DEFAULT_QUEUE)
     {
         if (!isset($this->executing[$queue])) {
             $this->executing[$queue] = new ARedisSortedSet($this->prefix.':executing:'.$queue);
@@ -427,7 +427,7 @@ class Yiiq extends CApplicationComponent
                 break;
         }
 
-        $executingPool = $this->getExcutingPool($jobData->queue);
+        $executingPool = $this->getExecutingPool($jobData->queue);
 
         if (!$pool->contains($id) && !$executingPool->contains($id)) {
             $this->deleteJob($id);
@@ -685,7 +685,7 @@ class Yiiq extends CApplicationComponent
      */
     public function markAsStarted(YiiqJobData $jobData, $pid)
     {
-        $this->getExcutingPool($jobData->queue)->add($jobData->id, $pid);
+        $this->getExecutingPool($jobData->queue)->add($jobData->id, $pid);
     }
 
     /**
@@ -697,7 +697,7 @@ class Yiiq extends CApplicationComponent
      */
     public function markAsCompleted(YiiqJobData $jobData)
     {
-        $this->getExcutingPool($jobData->queue)->remove($jobData->id);
+        $this->getExecutingPool($jobData->queue)->remove($jobData->id);
         if ($jobData->type !== self::TYPE_REPEATABLE) {
             $this->deleteJob($jobData->id);
         }
@@ -730,7 +730,7 @@ class Yiiq extends CApplicationComponent
      */
     public function checkStoppedJobs($queue)
     {
-        $pool = $this->getExcutingPool($queue);
+        $pool = $this->getExecutingPool($queue);
 
         $found = 0;
         $restored = 0;
