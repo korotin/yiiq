@@ -34,7 +34,7 @@ abstract class YiiqBaseTestCase extends CTestCase
     protected function stopYiiq()
     {
         if (!$this->started)
-            throw new CException('Yiiq ');
+            throw new CException('Yiiq is not started');
 
         $this->started = false;
 
@@ -48,7 +48,6 @@ abstract class YiiqBaseTestCase extends CTestCase
     {
         if ($this->started) {
             $this->stopYiiq();
-            usleep(500000);
         }
 
         $this->exec('rm -rf '.__DIR__.'/../runtime/*');

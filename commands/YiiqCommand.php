@@ -62,7 +62,8 @@ class YiiqCommand extends YiiqBaseCommand
      */
     public function actionStop()
     {
-        Yii::app()->getComponent('yiiq')->check();
+        Yii::app()->yiiq->check();
+        Yii::app()->yiiq->sendMessage(Yiiq::COMMAND_EXIT);
 
         $pids = Yii::app()->yiiq->pidPool->getData();
         if ($pids) {

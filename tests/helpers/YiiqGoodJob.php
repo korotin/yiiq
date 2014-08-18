@@ -9,7 +9,13 @@ class YiiqGoodJob extends YiiqBaseJob
     public function run()
     {
         $path = Yii::getPathOfAlias('application.runtime').DIRECTORY_SEPARATOR.$this->file;
-        file_put_contents($path, $this->content);
+        if (file_exists($path)) {
+            $prepend = file_get_contents($path);
+        }
+        else {
+            $prepend = '';
+        }
+        file_put_contents($path, $prepend.$this->content);
     }
 
 }

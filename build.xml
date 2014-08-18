@@ -2,6 +2,10 @@
 <project name="yiiq" default="help">
 
     <target name="help">
+        <echo>Available commands:
+
+        * test      - test extension
+        * help      - this message</echo>
     </target>
 
     <target name="test">

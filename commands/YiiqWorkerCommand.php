@@ -21,42 +21,56 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      * @var string
      */
     protected $instanceName = null;
+
     /**
      * Process type displayed in process title.
      * 
      * @var string
      */
     protected $processType = 'worker';
+
     /**
      * Worker pid.
      * 
      * @var int
      */
     protected $pid;
+
     /**
      * Worker queues.
      * 
      * @var array
      */
     protected $queues;
+
     /**
      * Stringifies queues names.
      * 
      * @var string
      */
     protected $stringifiedQueues;
+
     /**
      * Max count of child threads.
      * 
      * @var int
      */
     protected $maxThreads;
+
     /**
      * Child pid pool.
      * 
      * @var ARedisSet
      */
     protected $childPool;
+
+    /**
+     * Child pid to job id array.
+     * 
+     * @var array
+     */
+    protected $pidToJob = [];
+
     /**
      * Shutdown flag.
      * Becomes true on SIGTERM.
@@ -65,6 +79,12 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected $shutdown = false;
 
+    /**
+     * Stringify queues array.
+     * 
+     * @param  array  $queues
+     * @return string
+     */
     protected function stringifyQueues(array $queues)
     {
         asort($queues);
@@ -165,22 +185,56 @@ class YiiqWorkerCommand extends YiiqBaseCommand
     }
 
     /**
+     * Handle SIGTERM.
+     */
+    protected function handleSigTerm()
+    {
+        $this->shutdown = true;
+    }
+
+    /**
+     * Handle SIGCHLD.
+     */
+    protected function handleSigChld()
+    {
+        $this->waitForThread(WNOHANG);
+    }
+
+    /**
      * Set up handlers for signals.
      */
     protected function setupSignals()
     {
-        declare(ticks = 1);
-        // Set shutdown flag on terminate command
-        pcntl_signal(SIGTERM, function() {
-            $this->shutdown = true;
-        });
-        // Grab child process status to prevent appearing of zombie processes
-        pcntl_signal(SIGCHLD, function() {
-            $status = null;
-            if (pcntl_waitpid(-1, $status, WNOHANG) > 0) {
-                pcntl_wexitstatus($status);
-            }
-        });
+        // Set shutdown flag on terminate command.
+        pcntl_signal(SIGTERM, [$this, 'handleSigTerm']);
+        // Grab child process status to prevent appearing of zombie processes.
+        pcntl_signal(SIGCHLD, [$this, 'handleSigChld']);
+    }
+
+    /**
+     * Handle broadcast message.
+     * 
+     * @param  Yiiq $yiiq
+     * @param  string $message
+     * @param  array $params
+     */
+    public function handleMessage(Yiiq $yiiq, $message, $params)
+    {
+        switch ($message) {
+            case Yiiq::COMMAND_NEWJOB:
+                if (
+                    !empty($params[0]) 
+                    && in_array($params[0], $this->queues)
+                ) {
+                    $yiiq->unsubscribe();
+                }
+                break;
+
+            case Yiiq::COMMAND_EXIT:
+                $this->shutdown = true;
+                $yiiq->unsubscribe();
+                break;
+        }
     }
 
     /**
@@ -198,9 +252,36 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      * 
      * @return boolean
      */
-    protected function hasFreeThread()
+    protected function hasFreeThread()  
     {
         return $this->getThreadsCount() < $this->maxThreads;
+    }
+
+    /**
+     * Wait for any child to exit.
+     * If $options = WNOHANG returns immediately if no child process exited.
+     * 
+     * @param  integer[optional] $options
+     */
+    protected function waitForThread($options = 0)
+    {
+        $status = null;
+        $childPid = pcntl_waitpid(-1, $status, $options);
+        
+        if ($childPid <= 0) return;
+
+        pcntl_wexitstatus($status);
+        $this->getChildPool()->remove($childPid);
+
+        if (!isset($this->pidToJob[$childPid])) return;
+
+        $jobId = $this->pidToJob[$childPid];
+        unset($this->pidToJob[$childPid]);
+
+        // If job is still marked as executing, child process failed.
+        if (Yii::app()->yiiq->isExecuting($jobId)) {
+            Yii::app()->yiiq->restoreJob($jobId);
+        }
     }
 
     /**
@@ -208,8 +289,9 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected function waitForThreads()
     {
-        $status = null;
-        while (pcntl_waitpid(-1, $status) > 0) { }
+        while ($this->getThreadsCount()) {
+            $this->waitForThread();
+        }
     }
 
     /**
@@ -220,53 +302,47 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      * @param  string $queue
      * @param  YiiqJobData $job
      */
-    protected function runJob($queue, $jobData)
+    protected function runJob($queue, YiiqJobData $jobData)
     {
-        // If we're in parent process, wait for child thread to get initialized
-        // and then return
-        if (pcntl_fork() !== 0) {
-            usleep(100000);
+        // Try to fork process.
+        $childPid = pcntl_fork();
+
+        // If we're in parent process, add child pid to pool and return.
+        if ($childPid > 0) {
+            $this->pidToJob[$childPid] = $jobData->id;
+            $this->getChildPool()->add($childPid);
+            return;
+        }
+        // If we're failed to fork process, restore job and exit.
+        elseif ($childPid < 0) {
+            Yii::app()->restoreJob($jobData->id);
             return;
         }
 
+        // We are child - get our pid.
         $childPid = posix_getpid();
         
         $this->processType = 'job';
         $this->setProcessTitle('initializing', $queue);
 
-        // Force reconnect to redis
+        // Force reconnect to redis.
         Yii::app()->redis->setClient(null);
-
-        $this->getChildPool()->add($childPid);
 
         Yii::trace('Starting job '.$jobData->queue.':'.$jobData->id.' ('.$jobData->class.')...');
         $this->setProcessTitle('executing '.$jobData->id.' ('.$jobData->class.')', $jobData->queue);
         Yii::app()->yiiq->markAsStarted($jobData, $childPid);
+        
+        Yii::app()->yiiq->onBeforeJob();
 
-        $e = null;
-        try {
-            Yii::app()->yiiq->onBeforeJob();
+        $class = $jobData->class;
+        $job = new $class($jobData->queue, $jobData->type, $jobData->id);
+        $returnData = $job->execute($jobData->args);
 
-            $class = $jobData->class;
-            $job = new $class($jobData->queue, $jobData->type, $jobData->id);
-            $job->execute($jobData->args);
+        Yii::app()->yiiq->markAsCompleted($jobData, $returnData);
 
-            Yii::app()->yiiq->markAsCompleted($jobData);
-
-            Yii::app()->yiiq->onAfterJob();
-        }
-        catch (Exception $e) {
-            // Exception is caught, but we'll try to exit child thread correctly
-        }
-
-        $this->getChildPool()->remove($childPid);
-
-        if (!$e) {
-            Yii::trace('Job '.$jobData->queue.':'.$jobData->id.' done.');
-        }
-        else {
-            throw $e;
-        }
+        Yii::app()->yiiq->onAfterJob();
+        
+        Yii::trace('Job '.$jobData->queue.':'.$jobData->id.' done.');
 
         exit(0);
     }
@@ -280,16 +356,18 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         $offset = null;
         $count = count($this->queues);
 
-        while (true) {
+        while (!$this->shutdown) {
             // Iterate over free threads.
-            while (
-                !$this->shutdown
-                && $this->hasFreeThread()
-            ) {
+            while ($this->hasFreeThread() && !$this->shutdown) {
+                // Handle signals.
+                pcntl_signal_dispatch();
+
+                if ($this->shutdown) break;
+
                 // Look for new job.
                 // Iterate over all watched queues, stop when new job found.
                 // If the previous job was found in first queue, iteration will be started from second
-                // queue.
+                // queue etc.
                 for ($index = 0; $index < $count; $index++) {
                     $queue = $this->queues[($index + $offset) % $count];
                     if ($jobData = Yii::app()->yiiq->popJob($queue)) {
@@ -307,28 +385,29 @@ class YiiqWorkerCommand extends YiiqBaseCommand
 
             if ($this->shutdown) break;
 
-            // If all child threads are active, wait for one of them to terminate.
-            // Otherwise just sleep for 1 second.
+            // If no free slots available wait for any child to exit. Otherwise just wait some time.
             if (!$this->hasFreeThread()) {
                 $this->setProcessTitle('no free threads ('.$this->maxThreads.' threads)');
-                pcntl_waitpid(-1, $status);
+
+                $this->waitForThread();
             }
             else {
-                $this->setProcessTitle('no new jobs ('.$this->getThreadsCount().' of '.$this->maxThreads.' threads busy)');
-                sleep(1);
+                $this->setProcessTitle('no new jobs ('.$this->getThreadsCount().' of '.$this->maxThreads.' threads busy)');    
+                
+                // Wait a little before next loop.
+                usleep(500000);
+
+                // FIXME Message system has a major bug: we cannot handle signals while subscribed.
+                //Yii::app()->yiiq->subscribe([$this, 'handleMessage']);
             }
 
-            // Check for dead pids in child pool
-            Yii::app()->yiiq->checkPidPool($this->getChildPool());
-
-            foreach ($this->queues as $queue) {
-                Yii::app()->yiiq->checkStoppedJobs($queue);
-            }
+            // Handle signals.
+            pcntl_signal_dispatch();
         }
     }
     
     /**
-     * Run worker for given queue and with given count of
+     * Run worker for given queues and with given count of
      * max child threads.
      * 
      * @param  array $queues 

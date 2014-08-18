@@ -54,6 +54,7 @@ abstract class YiiqBaseJob
      * It sets job arguments and runs job itself.
      * 
      * @param  array $args
+     * @return mixed job result returned by run()
      */
     public function execute($args)
     {
@@ -63,7 +64,7 @@ abstract class YiiqBaseJob
             }
         }
 
-        $this->run();
+        return $this->run();
     }
 
 }

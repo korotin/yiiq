@@ -25,7 +25,6 @@ class YiiqJobData
     public $args =  null;
     public $timestamp = null;
     public $interval = null;
-
     public $faults = 0;
 
     public function __construct($data = null)

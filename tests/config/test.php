@@ -1,13 +1,13 @@
 <?php
 
-require_once __DIR__.'/../../../../../vendors/autoload.php';
+require_once __DIR__.'/../../../../autoload.php';
 
 return array(
     'basePath' => __DIR__.'/..',
     'extensionPath' => __DIR__.'/../..',
 
     'aliases' => array(
-        'vendors' => __DIR__.'/../../../../../vendors',
+        'vendor' => __DIR__.'/../../../../',
     ),
 
     'import' => array(
@@ -28,7 +28,7 @@ return array(
         ),
 
         'redis' => array(
-            'class' => 'vendors.subtronic.yiipredis.ARedisConnection',
+            'class' => 'vendor.subtronic.yiipredis.ARedisConnection',
             'hostname' => 'localhost',
             'port' => 6379,
             'database' => 2,
@@ -43,10 +43,10 @@ return array(
 
     'commandMap' => array(
         'yiiq' => array(
-            'class' => 'vendors.herroffizier.yiiq.commands.YiiqCommand',
+            'class' => 'vendor.herroffizier.yiiq.commands.YiiqCommand',
         ),
         'yiiqWorker' => array(
-            'class' => 'vendors.herroffizier.yiiq.commands.YiiqWorkerCommand',
+            'class' => 'vendor.herroffizier.yiiq.commands.YiiqWorkerCommand',
         ),
     ),
 );

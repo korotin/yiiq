@@ -7,10 +7,9 @@ class YiiqCommandTest extends YiiqBaseTestCase
     {
         $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
         $this->startYiiq();
-        usleep(500000);
+        usleep(100000);
         $this->assertContains('YiiqTest', $this->exec('ps aux'));
         $this->stopYiiq();
-        usleep(500000);
         $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
 
         $this->assertFileExists(__DIR__.'/../runtime/yiiq.log');
