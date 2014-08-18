@@ -24,9 +24,9 @@ class YiiqDummyJob extends YiiqBaseJob
 
     public function run()
     {
-        Yii::trace('Started dummy job '.$this->queue.':'.$this->jobId.' (sleep for '.$this->sleep.'s).');
+        Yii::trace('Started dummy job '.$this->queue.':'.$this->id.' (sleep for '.$this->sleep.'s).');
         sleep($this->sleep);
-        Yii::trace('Job '.$this->queue.':'.$this->jobId.' completed.');
+        Yii::trace('Job '.$this->queue.':'.$this->id.' completed.');
     }
 
 }

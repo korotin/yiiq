@@ -487,7 +487,10 @@ class Yiiq extends CApplicationComponent
      */
     public function isExecuting($id)
     {
-        return $this->getExecutingPool()->contains($id);
+        return Yii::app()->redis->getClient()->zrank(
+            $this->getExecutingPool()->name, 
+            $id
+        ) !== null;
     }
 
     /**
@@ -498,7 +501,10 @@ class Yiiq extends CApplicationComponent
      */
     public function isCompleted($id)
     {
-        return $this->getCompletedPool()->contains($id);
+        return (bool) Yii::app()->redis->getClient()->sismember(
+            $this->getCompletedPool()->name, 
+            $id
+        );
     }
 
     /**
@@ -509,7 +515,10 @@ class Yiiq extends CApplicationComponent
      */
     public function isFailed($id)
     {
-        return $this->getFailedPool()->contains($id);
+        return (bool) Yii::app()->redis->getClient()->sismember(
+            $this->getFailedPool()->name, 
+            $id
+        );
     }
 
     /**

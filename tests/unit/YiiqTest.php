@@ -209,4 +209,20 @@ class YiiqTest extends YiiqBaseTestCase
         $this->stopYiiq();
     }
 
+    public function testJobStates()
+    {
+        $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
+        $this->startYiiq();
+
+        $id = Yii::app()->yiiq->enqueueJob('YiiqDummyJob', ['sleep' => 2]);
+        usleep(200000);
+        $this->assertTrue(Yii::app()->yiiq->isExecuting($id));
+        usleep(2200000);
+        $this->assertFalse(Yii::app()->yiiq->isFailed($id));
+        $this->assertTrue(Yii::app()->yiiq->isCompleted($id));
+        $this->assertFalse(Yii::app()->yiiq->isExecuting($id));
+
+        $this->stopYiiq();
+    }
+
 }
