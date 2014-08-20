@@ -214,13 +214,32 @@ class YiiqTest extends YiiqBaseTestCase
         $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
         $this->startYiiq();
 
-        $id = Yii::app()->yiiq->enqueueJob('YiiqDummyJob', ['sleep' => 2]);
+        $id = Yii::app()->yiiq->enqueueJob('YiiqWaitJob', ['sleep' => 2]);
         usleep(200000);
         $this->assertTrue(Yii::app()->yiiq->isExecuting($id));
         usleep(2200000);
         $this->assertFalse(Yii::app()->yiiq->isFailed($id));
         $this->assertTrue(Yii::app()->yiiq->isCompleted($id));
         $this->assertFalse(Yii::app()->yiiq->isExecuting($id));
+
+        $this->stopYiiq();
+    }
+
+    public function testResultSaving()
+    {
+        $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
+        $this->startYiiq();
+
+        $id = Yii::app()->yiiq->enqueueJob('YiiqReturnJob', ['result' => 'my result']);
+        usleep(500000);
+        $size = filesize(__DIR__.'/../runtime/yiiq.log');
+        $this->assertEquals(0, $size);
+        $this->assertFalse(Yii::app()->yiiq->isFailed($id));
+        $this->assertTrue(Yii::app()->yiiq->isCompleted($id));
+        $this->assertFalse(Yii::app()->yiiq->isExecuting($id));
+        $this->assertEquals('my result', Yii::app()->yiiq->getJobResult($id));
+        $this->assertEquals('my result', Yii::app()->yiiq->getJobResult($id, true));
+        $this->assertNull(Yii::app()->yiiq->getJobResult($id));
 
         $this->stopYiiq();
     }

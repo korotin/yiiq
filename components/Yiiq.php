@@ -25,11 +25,14 @@ class Yiiq extends CApplicationComponent
      */
     const DEFAULT_THREADS   = 5;
 
+    /**
+     * Commands for broadcasting.
+     */
     const COMMAND_NEWJOB    = 'newjob';
     const COMMAND_EXIT      = 'exit';
 
     /**
-     * Type name for scheduled tasks.
+     * Type names for scheduled tasks.
      */
     const TYPE_SIMPLE       = 'simple';
     const TYPE_SCHEDULED    = 'scheduled';
@@ -912,8 +915,6 @@ class Yiiq extends CApplicationComponent
      */
     public function check($log = true)
     {
-        $hasFail = false;
-
         if ($log) echo "Checking for dead children... ";
         $deadChildren = 0;
         $keys = Yii::app()->redis->keys($this->prefix.':children:*');
