@@ -82,7 +82,8 @@ class YiiqTest extends YiiqBaseTestCase
 
         $this->assertFalse(file_exists(__DIR__.'/../runtime/goodjob'));
         $id = Yii::app()->yiiq->enqueueJob('YiiqBadJob');
-        usleep(2000000);
+        sleep(array_sum(Yii::app()->yiiq->faultIntervals) + 1);
+        
         $size = filesize(__DIR__.'/../runtime/yiiq.log');
         $this->assertGreaterThan(0, $size);
         $this->assertContains('YiiqTest', $this->exec('ps aux'));
@@ -143,14 +144,14 @@ class YiiqTest extends YiiqBaseTestCase
 
         $this->assertFalse(file_exists(__DIR__.'/../runtime/goodjob'));
         Yii::app()->yiiq->enqueueJobIn(2, 'YiiqBadJob');
-        usleep(2200000);
+        sleep(2 + array_sum(Yii::app()->yiiq->faultIntervals) + 1);
         $size = filesize(__DIR__.'/../runtime/yiiq.log');
         $this->assertGreaterThan(0, $size);
         $this->assertContains('YiiqTest', $this->exec('ps aux'));
 
         $this->assertFalse(file_exists(__DIR__.'/../runtime/goodjob'));
         Yii::app()->yiiq->enqueueJobIn(2, 'YiiqGoodJob');
-        usleep(2200000);
+        sleep(3);
         $this->assertEquals($size, filesize(__DIR__.'/../runtime/yiiq.log'));
         $this->assertTrue(file_exists(__DIR__.'/../runtime/goodjob'));
 
@@ -195,7 +196,7 @@ class YiiqTest extends YiiqBaseTestCase
 
         Yii::app()->yiiq->enqueueRepeatableJob('badjob', 1, 'YiiqBadJob');
 
-        sleep(Yii::app()->yiiq->maxFaults + 1);
+        sleep(array_sum(Yii::app()->yiiq->faultIntervals) + 1);
         $size = filesize(__DIR__.'/../runtime/yiiq.log');
         $this->assertGreaterThan(0, $size);
         $this->assertContains('YiiqTest', $this->exec('ps aux'));

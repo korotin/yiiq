@@ -38,6 +38,7 @@ return array(
         'yiiq' => array(
             'class' => 'ext.components.Yiiq',
             'name' => 'YiiqTest',
+            'faultIntervals' => [1, 1, 1],
         ),
     ),
 

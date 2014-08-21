@@ -55,13 +55,12 @@ class Yiiq extends CApplicationComponent
     public $prefix          = 'yiiq';
 
     /**
-     * Maximum amount of faults per job.
-     * Job will be removed if this limit is exceeded.
-     * False value means no limit (which is not recommended).
+     * Array of intervals (in seconds) between job faults.
+     * Job will be removed if all intervals are passed.
      * 
-     * @var integer
+     * @var integer[]
      */
-    public $maxFaults       = 5;
+    public $faultIntervals  = [30, 60, 300, 3600, 7200];
 
     /**
      * Process title template.
@@ -611,31 +610,35 @@ class Yiiq extends CApplicationComponent
         $jobData->lastFailed = time();
 
         $this->getExecutingPool()->remove($id);
-        $this->saveJobData($jobData, true);
 
         if (
-            $this->maxFaults 
-            && $jobData->faults >= $this->maxFaults
+            $this->faultIntervals 
+            && $jobData->faults > count($this->faultIntervals)
         ) {
+            $this->saveJobData($jobData, true);
             $this->deleteJob($id, false);
             $this->getFailedPool()->add($id);
             
             return false;
         }
 
+        $timestamp = time() + $this->faultIntervals[$jobData->faults - 1];
+
         switch ($jobData->type) {
             case self::TYPE_SIMPLE:
-                $this->getSimplePool($jobData->queue)->add($jobData->id);
-                break;
+                $jobData->type = self::TYPE_SCHEDULED;
+                $jobData->timestamp = $timestamp;
 
             case self::TYPE_SCHEDULED:
-                $pool = $this->getScheduledPool($jobData->queue)->add($jobData->id, $jobData->timestamp);
+                $this->getScheduledPool($jobData->queue)->add($jobData->id, $timestamp);
                 break;
 
             case self::TYPE_REPEATABLE:
-                $pool = $this->getRepeatablePool($jobData->queue)->add($jobData->id, time() + $jobData->interval);
+                $this->getRepeatablePool($jobData->queue)->add($jobData->id, $timestamp);
                 break;
         }
+
+        $this->saveJobData($jobData, true);
 
         return true;
     }
