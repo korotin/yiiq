@@ -37,6 +37,13 @@ abstract class YiiqBaseJob
      */
     protected $id;
 
+    /**
+     * Arguments.
+     * 
+     * @var array
+     */
+    protected $args;
+
     public function __construct($queue, $type, $id)
     {
         $this->queue = $queue;
@@ -62,6 +69,8 @@ abstract class YiiqBaseJob
             foreach ($args as $k => $v) {
                 $this->$k = $v;
             }
+
+            $this->args = $args;
         }
 
         return $this->run();
