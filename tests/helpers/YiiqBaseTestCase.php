@@ -26,7 +26,7 @@ abstract class YiiqBaseTestCase extends CTestCase
 
         $command = $this->createCommand();
         ob_start();
-        if (!is_array($queue)) $queue = array($queue);
+        if (!is_array($queue)) $queue = [$queue];
         $command->actionStart($queue, $threads, 'yiiq.log');
         ob_end_clean();
     }
@@ -56,6 +56,16 @@ abstract class YiiqBaseTestCase extends CTestCase
         foreach ($keys as $key) {
             Yii::app()->redis->del(preg_replace('/^'.Yii::app()->redis->prefix.'/', '', $key));
         }
+    }
+
+    protected function waitForJobs($threads, $jobs, $bad = false)
+    {
+        $timeForJob = 600000 + ($bad ? array_sum(Yii::app()->yiiq->faultIntervals) * 1000000 * 1.6 : 0);
+        $timeForAllJobs = ceil(($jobs * $timeForJob) / $threads);
+        if ($timeForAllJobs < $timeForJob) {
+            $timeForAllJobs = $timeForJob;
+        }
+        usleep($timeForAllJobs);
     }
 
     public function setUp()

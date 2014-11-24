@@ -112,11 +112,11 @@ class YiiqDummyJob extends YiiqBaseJob
 }
 ```
 
-As we said above there are three types of jobs in **Yiiq**: simple, scheduled and repeatable. For each type job code will be exactly the same. Job type depends on method used to schedule this job. 
+As we said above there are three types of jobs in **Yiiq**: simple, scheduled and repeatable. Job type depends on method used to schedule this job. 
 
 #### Simple job
 
-To add a simple job you may use one of following calls. This job will be executed as soon as possible and once. 
+To add a simple job you may use one of following calls. This job will be executed as soon as possible and only once. 
 
 ```php
 // Add YiiqDummyJob with default arguments to default queue.

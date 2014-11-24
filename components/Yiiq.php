@@ -388,7 +388,7 @@ class Yiiq extends CApplicationComponent
         $job = Yii::app()->redis->getClient()->get($key);
         if (!$job) return;
 
-        return new YiiqJobData($job); 
+        return new YiiqJobData($job);
     }
 
     /**
@@ -618,11 +618,10 @@ class Yiiq extends CApplicationComponent
             $this->saveJobData($jobData, true);
             $this->deleteJob($id, false);
             $this->getFailedPool()->add($id);
-            
             return false;
         }
 
-        $timestamp = time() + $this->faultIntervals[$jobData->faults - 1];
+        $timestamp = $jobData->lastFailed + $this->faultIntervals[$jobData->faults - 1];
 
         switch ($jobData->type) {
             case self::TYPE_SIMPLE:
@@ -760,6 +759,71 @@ class Yiiq extends CApplicationComponent
         $this->sendMessage(self::COMMAND_NEWJOB, [$queue]);
 
         return $id;
+    }
+
+    /**
+     * Create a job via job producer.
+     * 
+     * @param  string $class
+     * @return YiiqJobProducer
+     */
+    public function createJob($class)
+    {
+        return new YiiqJobProducer($this, $class);
+    }
+
+    /**
+     * Enqueue job by job producer.
+     * 
+     * Called by YiiqJobProducer.
+     * Returns job id.
+     * 
+     * @param  YiiqJobProducer $producer
+     * @return string
+     */
+    public function enqueueJobByProducer(YiiqJobProducer $producer)
+    {
+        switch ($jobProducer->type) {
+            case self::TYPE_SIMPLE:
+                return $this->enqueueJob(
+                    $producer->class, 
+                    $producer->args, 
+                    $producer->queue, 
+                    $producer->id
+                );
+                break;
+
+            case self::TYPE_SCHEDULED:
+                if ($producer->timestamp) {
+                    return $this->enqueueJobAt(
+                        $producer->timestamp, 
+                        $producer->class, 
+                        $producer->args, 
+                        $producer->queue,
+                        $producer->id
+                    );
+                }
+                else { 
+                    return $this->enqueueJobIn(
+                        $producer->interval, 
+                        $producer->class, 
+                        $producer->args, 
+                        $producer->queue,
+                        $producer->id
+                    );
+                }
+                break;
+
+            case self::TYPE_REPEATABLE:
+                return $this->enqueueRepeatableJob(
+                    $producer->id, 
+                    $producer->interval, 
+                    $producer->class, 
+                    $producer->args, 
+                    $producer->queue
+                );
+                break;
+        }
     }
 
     /**

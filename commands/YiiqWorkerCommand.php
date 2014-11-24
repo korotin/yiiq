@@ -79,6 +79,8 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected $shutdown = false;
 
+    protected $signalHandled = false;
+
     /**
      * Stringify queues array.
      * 
@@ -189,6 +191,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected function handleSigTerm()
     {
+        $this->signalHandled = true;
         $this->shutdown = true;
     }
 
@@ -197,7 +200,8 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected function handleSigChld()
     {
-        $this->waitForThread(WNOHANG);
+        $this->signalHandled = true;
+        $this->waitForThread(WNOHANG | WUNTRACED);
     }
 
     /**
@@ -265,23 +269,31 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected function waitForThread($options = 0)
     {
-        $status = null;
-        $childPid = pcntl_waitpid(-1, $status, $options);
-        
-        if ($childPid <= 0) return;
+        // Receive all child pids.
+        do {
+            $status = null;
+            $childPid = pcntl_wait($status, $options);
+            
+            if ($childPid <= 0) {
+                return;
+            }
 
-        pcntl_wexitstatus($status);
-        $this->getChildPool()->remove($childPid);
+            pcntl_wexitstatus($status);
+            $this->getChildPool()->remove($childPid);
 
-        if (!isset($this->pidToJob[$childPid])) return;
+            if (!isset($this->pidToJob[$childPid])) {
+                return;
+            }
 
-        $jobId = $this->pidToJob[$childPid];
-        unset($this->pidToJob[$childPid]);
+            $jobId = $this->pidToJob[$childPid];
+            unset($this->pidToJob[$childPid]);
 
-        // If job is still marked as executing, child process failed.
-        if (Yii::app()->yiiq->isExecuting($jobId)) {
-            Yii::app()->yiiq->restoreJob($jobId);
-        }
+            // If status is non-zero or job is still marked as executing, 
+            // child process failed.
+            if ($status || Yii::app()->yiiq->isExecuting($jobId)) {
+                Yii::app()->yiiq->restoreJob($jobId);
+            }
+        } while ($childPid > 0);
     }
 
     /**
@@ -292,6 +304,17 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         while ($this->getThreadsCount()) {
             $this->waitForThread();
         }
+    }
+
+    /**
+     * Dispatch all signals.
+     */
+    protected function dispatchSignals()
+    {
+        do {
+            $this->signalHandled = false;
+            pcntl_signal_dispatch();
+        } while ($this->signalHandled);
     }
 
     /**
@@ -360,7 +383,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
             // Iterate over free threads.
             while ($this->hasFreeThread() && !$this->shutdown) {
                 // Handle signals.
-                pcntl_signal_dispatch();
+                $this->dispatchSignals();
 
                 if ($this->shutdown) break;
 
@@ -402,7 +425,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
             }
 
             // Handle signals.
-            pcntl_signal_dispatch();
+            $this->dispatchSignals();
         }
     }
     
