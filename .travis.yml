@@ -9,7 +9,6 @@ php:
     - 5.4
 
 install:
-    - pecl install redis
     - composer install
 
 script: ./vendor/bin/phing test
