@@ -11,4 +11,6 @@ php:
 install:
     - composer install
 
+before_script: phpenv config-add travis-php.ini
+
 script: ./vendor/bin/phing test
