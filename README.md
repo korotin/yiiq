@@ -1,6 +1,6 @@
 # Yiiq
 
-**Yiiq** is a Redis](http://redis.io/)-based background job manager for Yii Framework.
+**Yiiq** is a [Redis](http://redis.io/)-based background job manager for Yii Framework.
 
 To run job with **Yiiq** just wrap it in class and type: 
 ```php
