@@ -1,21 +1,15 @@
 <?php
 
-require_once __DIR__.'/../../../../autoload.php';
+require_once __DIR__.'/../../vendor/autoload.php';
 
 return array(
     'basePath' => __DIR__.'/..',
     'extensionPath' => __DIR__.'/../..',
 
     'aliases' => array(
-        'vendor' => __DIR__.'/../../../../',
-    ),
-
-    'import' => array(
-        'ext.commands.*',
-        'ext.components.*',
-        'ext.jobs.*',
-        'ext.models.*',
-        'ext.tests.helpers.*',
+        'Yiiq' => __DIR__.'/../../lib/Yiiq',
+        'Yiiq\tests' => __DIR__.'/../',
+        'vendor' => __DIR__.'/../../vendor',
     ),
 
     'preload' => array(
@@ -28,7 +22,7 @@ return array(
         ),
 
         'redis' => array(
-            'class' => 'vendor.subtronic.yiipredis.ARedisConnection',
+            'class' => 'vendor.codemix.yiiredis.ARedisConnection',
             'hostname' => 'localhost',
             'port' => 6379,
             'database' => 2,
@@ -36,7 +30,7 @@ return array(
         ),
 
         'yiiq' => array(
-            'class' => 'ext.components.Yiiq',
+            'class' => '\Yiiq\Yiiq',
             'name' => 'YiiqTest',
             'faultIntervals' => [1, 1, 1],
         ),
@@ -44,10 +38,10 @@ return array(
 
     'commandMap' => array(
         'yiiq' => array(
-            'class' => 'vendor.herroffizier.yiiq.commands.YiiqCommand',
+            'class' => '\Yiiq\commands\Main',
         ),
         'yiiqWorker' => array(
-            'class' => 'vendor.herroffizier.yiiq.commands.YiiqWorkerCommand',
+            'class' => '\Yiiq\commands\Worker',
         ),
     ),
 );

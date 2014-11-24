@@ -5,15 +5,21 @@
  * This file contains Yiiq worker command class.
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
- * @package ext.yiiq.commands
+ * @package yiiq.commands
  */
+
+namespace Yiiq\commands;
+
+use Yiiq\Yiiq,
+    Yiiq\commands\Base,
+    Yiiq\jobs\Data;
 
 /**
  * Yiiq worker command class.
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
-class YiiqWorkerCommand extends YiiqBaseCommand
+class Worker extends Base
 {
     /**
      * Instance name,
@@ -60,7 +66,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
     /**
      * Child pid pool.
      * 
-     * @var ARedisSet
+     * @var \ARedisSet
      */
     protected $childPool;
 
@@ -103,7 +109,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected function setProcessTitle($title, $queue = null)
     {
-        $titleTemplate = Yii::app()->yiiq->titleTemplate;
+        $titleTemplate = \Yii::app()->yiiq->titleTemplate;
         if (!$titleTemplate) return;
 
         $placeholders = array(
@@ -129,7 +135,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected function getWorkerPidName($queue)
     {
-        return Yii::app()->yiiq->prefix.':workers:'.$queue;
+        return \Yii::app()->yiiq->prefix.':workers:'.$queue;
     }
 
     /**
@@ -140,7 +146,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
     protected function getChildPool()
     {
         if ($this->childPool === null) {
-            $this->childPool = new ARedisSet(Yii::app()->yiiq->prefix.':children:'.$this->pid);
+            $this->childPool = new \ARedisSet(\Yii::app()->yiiq->prefix.':children:'.$this->pid);
         }
 
         return $this->childPool;
@@ -153,10 +159,10 @@ class YiiqWorkerCommand extends YiiqBaseCommand
     {
         foreach ($this->queues as $queue) {
             if (
-                ($oldPid = Yii::app()->redis->get($this->getWorkerPidName($queue)))
-                && (Yii::app()->yiiq->isPidAlive($oldPid))
+                ($oldPid = \Yii::app()->redis->get($this->getWorkerPidName($queue)))
+                && (\Yii::app()->yiiq->isPidAlive($oldPid))
             ) {
-                Yii::trace('Worker for queue '.$queue.' already running.');
+                \Yii::trace('Worker for queue '.$queue.' already running.');
                 exit(1);
             } 
         }
@@ -168,10 +174,10 @@ class YiiqWorkerCommand extends YiiqBaseCommand
     protected function savePid()
     {
         foreach ($this->queues as $queue) {
-            Yii::app()->redis->set($this->getWorkerPidName($queue), $this->pid);
+            \Yii::app()->redis->set($this->getWorkerPidName($queue), $this->pid);
         }
 
-        Yii::app()->yiiq->pidPool->add($this->pid);
+        \Yii::app()->yiiq->pidPool->add($this->pid);
     }
 
     /**
@@ -180,10 +186,10 @@ class YiiqWorkerCommand extends YiiqBaseCommand
     protected function clearPid()
     {
         foreach ($this->queues as $queue) {
-            Yii::app()->redis->del($this->getWorkerPidName($queue));
+            \Yii::app()->redis->del($this->getWorkerPidName($queue));
         }
 
-        Yii::app()->yiiq->pidPool->remove($this->pid);
+        \Yii::app()->yiiq->pidPool->remove($this->pid);
     }
 
     /**
@@ -218,7 +224,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
     /**
      * Handle broadcast message.
      * 
-     * @param  Yiiq $yiiq
+     * @param  \Yiiq\Yiiq $yiiq
      * @param  string $message
      * @param  array $params
      */
@@ -248,7 +254,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     protected function getThreadsCount()
     {
-        return (int)Yii::app()->redis->getClient()->scard($this->getChildPool()->name);
+        return (int) \Yii::app()->redis->getClient()->scard($this->getChildPool()->name);
     }
 
     /**
@@ -290,8 +296,8 @@ class YiiqWorkerCommand extends YiiqBaseCommand
 
             // If status is non-zero or job is still marked as executing, 
             // child process failed.
-            if ($status || Yii::app()->yiiq->isExecuting($jobId)) {
-                Yii::app()->yiiq->restoreJob($jobId);
+            if ($status || \Yii::app()->yiiq->isExecuting($jobId)) {
+                \Yii::app()->yiiq->restoreJob($jobId);
             }
         } while ($childPid > 0);
     }
@@ -323,12 +329,15 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      * after the fork get initialized.
      *
      * @param  string $queue
-     * @param  YiiqJobData $job
+     * @param  \Yiiq\jobs\Data $job
      */
-    protected function runJob($queue, YiiqJobData $jobData)
+    protected function runJob($queue, Data $jobData)
     {
         // Try to fork process.
         $childPid = pcntl_fork();
+
+        // Force reconnect to redis for parent and child due to bug in PhpRedis (https://github.com/nicolasff/phpredis/issues/474).
+        \Yii::app()->redis->getClient(true);
 
         // If we're in parent process, add child pid to pool and return.
         if ($childPid > 0) {
@@ -338,7 +347,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         }
         // If we're failed to fork process, restore job and exit.
         elseif ($childPid < 0) {
-            Yii::app()->restoreJob($jobData->id);
+            \Yii::app()->restoreJob($jobData->id);
             return;
         }
 
@@ -348,24 +357,20 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         $this->processType = 'job';
         $this->setProcessTitle('initializing', $queue);
 
-        // Force reconnect to redis.
-        Yii::app()->redis->setClient(null);
-
-        Yii::trace('Starting job '.$jobData->queue.':'.$jobData->id.' ('.$jobData->class.')...');
+        \Yii::trace('Starting job '.$jobData->queue.':'.$jobData->id.' ('.$jobData->class.')...');
         $this->setProcessTitle('executing '.$jobData->id.' ('.$jobData->class.')', $jobData->queue);
-        Yii::app()->yiiq->markAsStarted($jobData, $childPid);
-        
-        Yii::app()->yiiq->onBeforeJob();
+
+        \Yii::app()->yiiq->markAsStarted($jobData, $childPid);
+        \Yii::app()->yiiq->onBeforeJob();
 
         $class = $jobData->class;
         $job = new $class($jobData->queue, $jobData->type, $jobData->id);
         $returnData = $job->execute($jobData->args);
 
-        Yii::app()->yiiq->markAsCompleted($jobData, $returnData);
-
-        Yii::app()->yiiq->onAfterJob();
+        \Yii::app()->yiiq->markAsCompleted($jobData, $returnData);
+        \Yii::app()->yiiq->onAfterJob();
         
-        Yii::trace('Job '.$jobData->queue.':'.$jobData->id.' done.');
+        \Yii::trace('Job '.$jobData->queue.':'.$jobData->id.' done.');
 
         exit(0);
     }
@@ -393,7 +398,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
                 // queue etc.
                 for ($index = 0; $index < $count; $index++) {
                     $queue = $this->queues[($index + $offset) % $count];
-                    if ($jobData = Yii::app()->yiiq->popJob($queue)) {
+                    if ($jobData = \Yii::app()->yiiq->popJob($queue)) {
                         $offset = ($index + 1) % $count;
                         break;
                     }
@@ -438,7 +443,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
      */
     public function actionRun(array $queue, $threads)
     {
-        $this->instanceName = Yii::app()->yiiq->name ?: Yii::getPathOfAlias('application');
+        $this->instanceName = \Yii::app()->yiiq->name ?: \Yii::getPathOfAlias('application');
         $this->pid          = posix_getpid();
         $this->queues       = $queue;
         $this->stringifiedQueues = $this->stringifyQueues($this->queues);
@@ -450,7 +455,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         $this->setupSignals();
         $this->savePid();
 
-        Yii::trace('Started new yiiq worker '.$this->pid.' for '.$this->stringifiedQueues.'.');
+        \Yii::trace('Started new yiiq worker '.$this->pid.' for '.$this->stringifiedQueues.'.');
 
         $this->loop();
        
@@ -459,7 +464,7 @@ class YiiqWorkerCommand extends YiiqBaseCommand
         $this->waitForThreads();
         $this->clearPid();
         
-        Yii::trace('Terminated yiiq worker '.$this->pid.'.');
+        \Yii::trace('Terminated yiiq worker '.$this->pid.'.');
     }
 
 }

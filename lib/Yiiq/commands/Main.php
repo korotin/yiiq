@@ -5,31 +5,36 @@
  * This file contains Yiiq main command class.
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
- * @package ext.yiiq.commands
+ * @package yiiq.commands
  */
+
+namespace Yiiq\commands;
+
+use Yiiq\Yiiq,
+    Yiiq\commands\Base;
 
 /**
  * Yiiq main command class.
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
-class YiiqCommand extends YiiqBaseCommand
+class Main extends Base
 {
     /**
      * Run worker for given queue.
      * 
-     * @param  array[optional] $queue  Yiiq::DEFAULT_QUEUE by default
-     * @param  int[optional] $threads  Yiiq::DEFAULT_THREADS by default
+     * @param  array[optional] $queue  \Yiiq\Yiiq::DEFAULT_QUEUE by default
+     * @param  int[optional] $threads  \Yiiq\Yiiq::DEFAULT_THREADS by default
      * @param  string[optional] $log   error log file name stored at application.runtime 
      */
     public function actionStart(array $queue = null, $threads = null, $log = null)
     {
-        Yii::app()->getComponent('yiiq');
+        \Yii::app()->getComponent('yiiq');
 
         // Create array of unique queue names.
         // Split each --queue value by comma and then combine all values
         // into single-dimension array.
-        $queues = $queue ?: array(Yiiq::DEFAULT_QUEUE);
+        $queues = $queue ?: [Yiiq::DEFAULT_QUEUE];
         foreach ($queues as $index => $queue) {
             $queues[$index] = preg_split('/\s*\,\s*/', $queue);
         }
@@ -43,10 +48,10 @@ class YiiqCommand extends YiiqBaseCommand
         // Set log file name if $log is not empty, otherwise disable error logging.
         $log = 
             $log
-                ? Yii::getPathOfAlias('application.runtime').DIRECTORY_SEPARATOR.$log
+                ? \Yii::getPathOfAlias('application.runtime').DIRECTORY_SEPARATOR.$log
                 : '/dev/null';
 
-        $command = 'nohup sh -c "'.escapeshellarg(Yii::app()->basePath.'/yiic').' yiiqWorker run ';
+        $command = 'nohup sh -c "'.escapeshellarg(\Yii::app()->basePath.'/yiic').' yiiqWorker run ';
         foreach ($queues as $queue) {
             $command .= '--queue='.$queue.' ';
         }
@@ -62,15 +67,15 @@ class YiiqCommand extends YiiqBaseCommand
      */
     public function actionStop()
     {
-        Yii::app()->yiiq->check();
-        Yii::app()->yiiq->sendMessage(Yiiq::COMMAND_EXIT);
+        \Yii::app()->yiiq->check();
+        \Yii::app()->yiiq->sendMessage(Yiiq::COMMAND_EXIT);
 
-        $pids = Yii::app()->yiiq->pidPool->getData();
+        $pids = \Yii::app()->yiiq->pidPool->getData();
         if ($pids) {
             foreach ($pids as $pid) {
                 echo "Killing $pid... ";
                 posix_kill($pid, SIGTERM);
-                while (Yii::app()->yiiq->isPidAlive($pid)) {
+                while (\Yii::app()->yiiq->isPidAlive($pid)) {
                     usleep(500000);
                 }
                 echo "Done.\n";
@@ -86,7 +91,7 @@ class YiiqCommand extends YiiqBaseCommand
      */
     public function actionCheck()
     {
-        Yii::app()->getComponent('yiiq')->check();
+        \Yii::app()->getComponent('yiiq')->check();
     }
     
 }

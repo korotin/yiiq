@@ -5,15 +5,17 @@
  * This file contains Yiiq job data class.
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
- * @package ext.yiiq.models
+ * @package yiiq.jobs
  */
+
+namespace Yiiq\jobs;
 
 /**
  * Yiiq job data class.
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
-class YiiqJobData
+class Data
 {
 
     public $created = null;
@@ -31,7 +33,7 @@ class YiiqJobData
     {
 
         if (is_string($data)) {
-            $data = CJSON::decode($data);
+            $data = \CJSON::decode($data);
         }
 
         if (is_array($data)) {
@@ -61,7 +63,7 @@ class YiiqJobData
         }
         $data = array_filter($data);
 
-        return CJSON::encode($data);
+        return \CJSON::encode($data);
     }
 
 }

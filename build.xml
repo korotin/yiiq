@@ -9,7 +9,7 @@
     </target>
 
     <target name="test">
-        <exec command="cd tests &amp;&amp; phpunit unit" passthru="true" checkreturn="true"/>
+        <exec command="cd tests &amp;&amp; ./../vendor/bin/phpunit unit" passthru="true" checkreturn="true"/>
     </target>
 
 </project>

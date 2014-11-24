@@ -1,6 +1,6 @@
 {
     "name": "herroffizier/yiiq",
-    "description": "Background job queue manager for Yii",
+    "description": "Background job manager for Yii",
     "license": "MIT",
     "authors": [
         {
@@ -9,15 +9,15 @@
         }
     ],
     "autoload": {
-        "classmap": [
-            "commands/",
-            "components/",
-            "jobs/",
-            "models/"
-        ]
+        "psr-4": {"Yiiq\\tests\\": "tests", "Yiiq\\": "lib/Yiiq"}
     },
     "require": {
         "php": ">=5.4",
-        "ext-pcntl": "*"
+        "ext-pcntl": "*",
+        "codemix/yiiredis":"dev-master"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "3.7.*",
+        "phing/phing": "dev-master"
     }
 }

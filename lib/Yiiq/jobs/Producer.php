@@ -5,20 +5,24 @@
  * This file contains Yiiq job data class.
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
- * @package ext.yiiq.models
+ * @package yiiq.jobs
  */
+
+namespace Yiiq\jobs;
+
+use Yiiq\Yiiq;
 
 /**
  * Yiiq job producer class.
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
-class YiiqJobProducer
+class Producer
 {
     /**
      * Yiiq component instance.
      * 
-     * @var Yiiq
+     * @var \Yiiq\Yiiq
      */
     protected $owner    = null;
 

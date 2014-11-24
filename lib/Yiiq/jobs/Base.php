@@ -5,8 +5,10 @@
  * This file contains Yiiq base job class.
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
- * @package ext.yiiq.jobs
+ * @package yiiq.jobs
  */
+
+namespace Yiiq\jobs;
 
 /**
  * Yiiq base job class.
@@ -14,7 +16,7 @@
  * 
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
-abstract class YiiqBaseJob
+abstract class Base
 {
     /**
      * Queue name.

@@ -21,8 +21,8 @@ And it's done!
 ## Requirements
 
 * Unix platform
-* Redis
 * PHP >= 5.4
+* Redis
 * pcntl extension
 * Yii Framework >= 1.1.14
 * [YiiRedis](https://github.com/phpnode/YiiRedis)
@@ -35,6 +35,38 @@ Install **Yiiq** via Composer:
 composer require herroffizier/yiiq:dev-master
 ```
 
+Add path to ```\Yiiq``` namespace to ```aliases``` array (must be added in both ```main.php``` and ```console.php```):
+
+```php
+'aliases' => array(
+
+    // ...
+
+    'Yiiq' => __DIR__.'/../vendor/herroffizier/yiiq/lib/Yiiq',
+
+    // ...
+
+),
+```
+
+Add extension to your ```components``` array (must be added in both files also):
+
+```php
+'components' => array(
+
+    // ...
+
+    'yiiq' => array(
+        'class' => '\Yiiq\Yiiq',
+        // Name to identify daemon in process list (optional)
+        'name' => 'Yiiq test instance',
+    ),
+
+    // ...
+
+),
+```
+
 Add following commands to ```commandMap``` in ```console.php```:
 
 ```php
@@ -44,29 +76,12 @@ Add following commands to ```commandMap``` in ```console.php```:
 
     // Control Yiiq command
     'yiiq' => array(
-        'class' => 'vendor.herroffizier.yiiq.commands.YiiqCommand',
+        'class' => '\Yiiq\commands\Main',
     ),
+        
     // Daemon Yiiq command
     'yiiqWorker' => array(
-        'class' => 'vendor.herroffizier.yiiq.commands.YiiqWorkerCommand',
-    ),
-
-    // ...
-
-),
-```
-
-Add extension to your ```components``` array (must be added in both ```main.php``` and ```console.php```):
-
-```php
-'components' => array(
-
-    // ...
-
-    'yiiq' => array(
-        'class' => 'vendor.herroffizier.yiiq.components.Yiiq',
-        // Name to identify daemon in process list (optional)
-        'name' => 'Yiiq test instance',
+        'class' => '\Yiiq\commands\Worker',
     ),
 
     // ...
@@ -92,10 +107,10 @@ If daemon is not running refer to ```application.log``` and ```yiiq.log``` (both
 
 ### Creating jobs
 
-To create a job at first you should extend ```YiiqBaseJob``` class and implement it's ```run()``` method. Take a look at example:
+To create a job at first you should extend ```\Yiiq\jobs\Base``` class and implement it's ```run()``` method. Take a look at example:
 
 ```php
-class YiiqDummyJob extends YiiqBaseJob
+class YiiqDummyJob extends \Yiiq\jobs\Base
 {
     /**
      * Time to wait before exit.
@@ -107,7 +122,8 @@ class YiiqDummyJob extends YiiqBaseJob
     /**
      * This method should contain all job logic.
      *
-     * @return {mixed} all returned data will be saved in redis (for non-repetable jobs)
+     * @return {mixed} all returned data will be saved in redis 
+     *                 (for non-repeatable jobs)
      */
     public function run()
     {
@@ -151,7 +167,7 @@ Yii::app()->yiiq->enqueueJobIn(60, 'YiiqDummyJob');
 #### Repeatable job
 
 Repeatable job type has two diffeneces against other job types:
-* For repeatable jobs job id is required parameter,
+* For repeatable jobs job id becomes required parameter,
 * Repeatable job cannot return any data.
 
 To create a repeatable job, you may use following code:

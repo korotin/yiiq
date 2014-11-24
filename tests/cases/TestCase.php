@@ -1,6 +1,16 @@
 <?php
+/**
+ * Yiiq - background job queue manager for Yii
+ *
+ * This file contains base test case.
+ * 
+ * @author  Martin Stolz <herr.offizier@gmail.com>
+ * @package yiiq.tests.cases
+ */
 
-abstract class YiiqBaseTestCase extends CTestCase
+namespace Yiiq\tests\cases;
+
+abstract class TestCase extends \CTestCase
 {
     protected $started = false;
 
@@ -13,14 +23,14 @@ abstract class YiiqBaseTestCase extends CTestCase
 
     protected function createCommand()
     {
-        $command = new YiiqCommand(null, null);
+        $command = new \Yiiq\commands\Main(null, null);
         return $command;
     }
 
     protected function startYiiq($queue = 'default', $threads = 5)
     {
         if ($this->started)
-            throw new CException('Yiiq already started');
+            throw new \CException('Yiiq already started');
 
         $this->started = true;
 
@@ -52,15 +62,15 @@ abstract class YiiqBaseTestCase extends CTestCase
 
         $this->exec('rm -rf '.__DIR__.'/../runtime/*');
 
-        $keys = Yii::app()->redis->keys('*');
+        $keys = \Yii::app()->redis->keys('*');
         foreach ($keys as $key) {
-            Yii::app()->redis->del(preg_replace('/^'.Yii::app()->redis->prefix.'/', '', $key));
+            \Yii::app()->redis->del(preg_replace('/^'.\Yii::app()->redis->prefix.'/', '', $key));
         }
     }
 
     protected function waitForJobs($threads, $jobs, $bad = false)
     {
-        $timeForJob = 600000 + ($bad ? array_sum(Yii::app()->yiiq->faultIntervals) * 1000000 * 1.6 : 0);
+        $timeForJob = 600000 + ($bad ? array_sum(\Yii::app()->yiiq->faultIntervals) * 1000000 * 1.6 : 0);
         $timeForAllJobs = ceil(($jobs * $timeForJob) / $threads);
         if ($timeForAllJobs < $timeForJob) {
             $timeForAllJobs = $timeForJob;
