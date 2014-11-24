@@ -1,10 +1,17 @@
 # Yiiq
 
-**Yiiq** is an extension for Yii Framework, which provides a simple way to schedule, group and run jobs in background. It uses [Redis](http://redis.io/) as a storage.
+**Yiiq** is a Redis](http://redis.io/)-based background job manager for Yii Framework.
+
+To run job with **Yiiq** just wrap it in class and type: 
+```php
+Yii::app()->yiiq->enqueueJob('MyJob');
+
+```
+And it's done!
 
 ## Features
 
-* **Queues.** Jobs may be grouped in queues. This approach helps to prioritize and isolate jobs.
+* **Queues.** Jobs may be grouped in queues. This approach helps to prioritize jobs.
 * **Job types.** Job may be one of three types: simple, scheduled or repeatable. Simple job executes once as soon as daemon has free resources. Scheduled job executes once at defined time. Repeatable job executes infinitely with defined interval.
 * **Job status.** Each job has an unique id and extension provides information on job execution status.
 * **Job results.** If a job returns some result, it will be automatically saved to Redis and can be accessed via extension.
