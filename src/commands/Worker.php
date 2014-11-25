@@ -235,9 +235,9 @@ class Worker extends Base
 
         $siginfo = [];
         $signal = pcntl_sigtimedwait(
-            array_keys($handlers), 
-            $siginfo, 
-            0, 
+            array_keys($handlers),
+            $siginfo,
+            0,
             pow(10, 9) * 0.01
         );
         
