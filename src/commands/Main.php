@@ -68,7 +68,6 @@ class Main extends Base
     public function actionStop()
     {
         \Yii::app()->yiiq->check();
-        \Yii::app()->yiiq->sendMessage(Yiiq::COMMAND_EXIT);
 
         $pids = \Yii::app()->yiiq->pidPool->getData();
         if ($pids) {
@@ -76,7 +75,7 @@ class Main extends Base
                 echo "Killing $pid... ";
                 posix_kill($pid, SIGTERM);
                 while (\Yii::app()->yiiq->isPidAlive($pid)) {
-                    usleep(500000);
+                    usleep(100000);
                 }
                 echo "Done.\n";
             }

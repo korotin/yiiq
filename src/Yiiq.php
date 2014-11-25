@@ -31,12 +31,6 @@ class Yiiq extends \CApplicationComponent
     const DEFAULT_THREADS   = 5;
 
     /**
-     * Commands for broadcasting.
-     */
-    const COMMAND_NEWJOB    = 'newjob';
-    const COMMAND_EXIT      = 'exit';
-
-    /**
      * Type names for scheduled tasks.
      */
     const TYPE_SIMPLE       = 'simple';
@@ -78,14 +72,6 @@ class Yiiq extends \CApplicationComponent
      * @var string
      */
     public $titleTemplate   = 'Yiiq [{name}] {type}@{queue}: {message}';
-
-    /**
-     * Broadcast channel.
-     * Not used for now!
-     *
-     * @var \ARedisChannel
-     */
-    protected $broadcast    = null;
 
     /**
      * Pid pool.
@@ -130,7 +116,7 @@ class Yiiq extends \CApplicationComponent
     protected $completed = null;
 
     /**
-     * Array of failed job pools.
+     * Failed job pool.
      *
      * @var \ARedisSet
      */
@@ -166,56 +152,6 @@ class Yiiq extends \CApplicationComponent
     protected function generateJobId()
     {
         return \Yii::app()->redis->incr($this->prefix.':counter');
-    }
-
-    /**
-     * Get broadcasting channel.
-     *
-     * @return \ARedisChannel
-     */
-    protected function getBroadcast()
-    {
-        if ($this->broadcast === null) {
-            $this->broadcast = new \ARedisChannel($this->prefix.':broadcast');
-        }
-
-        return $this->broadcast;
-    }
-
-    /**
-     * Send message to broadcasting channel.
-     *
-     * @param  string $message
-     * @param  array[optional] $params
-     */
-    public function sendMessage($message, array $params = [])
-    {
-        $this->getBroadcast()->publish(\CJSON::encode(compact('message', 'params')));
-    }
-
-    /**
-     * Subscribe to broadcasting channel.
-     * This is a blocking operation.
-     *
-     * @param  callable $callback callback has a signature func(Yiiq $yiiq, $message, array $params)
-     */
-    public function subscribe($callback)
-    {
-        $broadcast = $this->getBroadcast();
-        $broadcast->onReceiveMessage = function ($event) use ($callback) {
-            $message = $event->sender->getLastMessage();
-            $message = \CJSON::decode($message);
-            $callback($this, $message['message'], $message['params']);
-        };
-        $broadcast->subscribe();
-    }
-
-    /**
-     * Unsubscribe from broadcasting channel.
-     */
-    public function unsubscribe()
-    {
-        $this->getBroadcast()->unsubscribe();
     }
 
     /**
@@ -699,7 +635,6 @@ class Yiiq extends \CApplicationComponent
 
         if ($id = $this->saveJobData($jobData)) {
             $this->getSimplePool($queue)->add($id);
-            $this->sendMessage(self::COMMAND_NEWJOB, [$queue]);
         }
 
         return $id;
@@ -727,7 +662,6 @@ class Yiiq extends \CApplicationComponent
 
         if ($id = $this->saveJobData($jobData)) {
             $this->getScheduledPool($queue)->add($id, $timestamp);
-            $this->sendMessage(self::COMMAND_NEWJOB, [$queue]);
         }
 
         return $id;
@@ -777,7 +711,6 @@ class Yiiq extends \CApplicationComponent
         $this->saveJobData($jobData, true);
         $this->setJobInterval($id, $interval);
         $this->getRepeatablePool($queue)->add($id, time());
-        $this->sendMessage(self::COMMAND_NEWJOB, [$queue]);
 
         return $id;
     }
@@ -1048,6 +981,7 @@ class Yiiq extends \CApplicationComponent
         if ($log) {
             echo "$stoppedJobs found, $restoredJobs restored.\n";
         }
+
 
         return
             $deadChildren === 0

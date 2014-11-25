@@ -1,5 +1,7 @@
 # Yiiq
 
+[![Build Status](https://travis-ci.org/herroffizier/yiiq.svg?branch=master)](https://travis-ci.org/herroffizier/yiiq)
+
 **Yiiq** is a [Redis](http://redis.io/)-based background job manager for Yii Framework.
 
 To run job with **Yiiq** just wrap it in class and type: 

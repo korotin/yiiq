@@ -53,7 +53,6 @@ class SimpleJobTest extends JobCase
 
         $this->waitForJobs($threads, 20);
 
-        echo file_get_contents(__DIR__.'/../../runtime/yiiq.log');
         $this->assertEquals(0, filesize(__DIR__.'/../../runtime/yiiq.log'));
         for ($i = 1; $i < 20; $i++) {
             $this->assertTrue(file_exists(__DIR__.'/../../runtime/goodjob'.$i));

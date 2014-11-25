@@ -39,7 +39,7 @@ class RepeatableJobTest extends JobCase
         \Yii::app()->yiiq->deleteJob('goodjob');
         $this->assertFalse(\Yii::app()->yiiq->hasJob('goodjob'));
 
-        usleep(500000);
+        usleep(200000);
 
         unlink(__DIR__.'/../../runtime/goodjob');
 

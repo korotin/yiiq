@@ -30,7 +30,7 @@ abstract class JobCase extends TestCase
     {
         return [
             ['\Yiiq\tests\jobs\BadJob'], 
-            ['\Yiiq\tests\jobs\YiiqBadJob2'], 
+            ['\Yiiq\tests\jobs\YiiqBadJob2'],
             ['\Yiiq\tests\jobs\YiiqBadJob3'],
         ];
     }
@@ -52,7 +52,7 @@ abstract class JobCase extends TestCase
 
     protected function waitForJobs($threads, $jobs, $bad = false)
     {
-        $timeForJob = 700000 + ($bad ? array_sum(\Yii::app()->yiiq->faultIntervals) * 1000000 * 1.7 : 0);
+        $timeForJob = 400000 + ($bad ? array_sum(\Yii::app()->yiiq->faultIntervals) * 1000000 * 1.4 : 0);
         $timeForAllJobs = ceil(($jobs * $timeForJob) / $threads);
         if ($timeForAllJobs < $timeForJob) {
             $timeForAllJobs = $timeForJob;

@@ -211,15 +211,50 @@ class Worker extends Base
         $this->waitForThread(WNOHANG | WUNTRACED);
     }
 
+    protected function getSignalHandlers()
+    {
+        return [
+            SIGTERM => 'handleSigTerm',
+            SIGCHLD => 'handleSigChld',
+        ];
+    }
+
     /**
      * Set up handlers for signals.
      */
     protected function setupSignals()
     {
-        // Set shutdown flag on terminate command.
-        pcntl_signal(SIGTERM, [$this, 'handleSigTerm']);
-        // Grab child process status to prevent appearing of zombie processes.
-        pcntl_signal(SIGCHLD, [$this, 'handleSigChld']);
+        foreach ($this->getSignalHandlers() as $signal => $method) {
+            pcntl_signal($signal, [$this, $method]);
+        }
+    }
+
+    protected function waitForSignals()
+    {
+        $handlers = $this->getSignalHandlers();
+
+        $siginfo = [];
+        $signal = pcntl_sigtimedwait(
+            array_keys($handlers), 
+            $siginfo, 
+            0, 
+            pow(10, 9) * 0.01
+        );
+        
+        if (isset($handlers[$signal])) {
+            $this->{$handlers[$signal]}();
+        }
+    }
+
+    /**
+     * Dispatch all signals.
+     */
+    protected function dispatchSignals()
+    {
+        do {
+            $this->signalHandled = false;
+            pcntl_signal_dispatch();
+        } while ($this->signalHandled);
     }
 
     /**
@@ -314,17 +349,6 @@ class Worker extends Base
     }
 
     /**
-     * Dispatch all signals.
-     */
-    protected function dispatchSignals()
-    {
-        do {
-            $this->signalHandled = false;
-            pcntl_signal_dispatch();
-        } while ($this->signalHandled);
-    }
-
-    /**
      * Run job with given id.
      * Job will be executed in fork and method will return 
      * after the fork get initialized.
@@ -381,9 +405,8 @@ class Worker extends Base
      */
     protected function loop()
     {
-        $status = null;
         $offset = null;
-        $count = count($this->queues);
+        $count  = count($this->queues);
 
         while (!$this->shutdown) {
             // Iterate over free threads.
@@ -434,10 +457,7 @@ class Worker extends Base
                 );
                 
                 // Wait a little before next loop.
-                usleep(500000);
-
-                // FIXME Message system has a major bug: we cannot handle signals while subscribed.
-                //Yii::app()->yiiq->subscribe([$this, 'handleMessage']);
+                $this->waitForSignals();
             }
 
             // Handle signals.
