@@ -20,6 +20,7 @@
         "phpunit/phpunit": "~3.7",
         "phpunit/phpunit-story": "*",
         "phpunit/dbunit": "*",
+        "phpunit/phpunit-selenium": "*",
         "phpunit/php-invoker": "*",
         "phing/phing": "dev-master",
         "yiisoft/yii": "~1"
