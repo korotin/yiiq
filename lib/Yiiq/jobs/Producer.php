@@ -174,5 +174,4 @@ class Producer
     {
         return $this->owner->enqueueJobByProducer($this);
     }
-
 }

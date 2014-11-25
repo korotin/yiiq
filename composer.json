@@ -17,6 +17,8 @@
         "codemix/yiiredis":"dev-master"
     },
     "require-dev": {
+        "squizlabs/php_codesniffer": "dev-master",
+        "fabpot/php-cs-fixer": "1.2.*@dev",
         "phpunit/phpunit": "~3.7",
         "phpunit/phpunit-story": "*",
         "phpunit/dbunit": "*",

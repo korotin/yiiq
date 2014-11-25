@@ -10,9 +10,9 @@
 
 namespace Yiiq\commands;
 
-use Yiiq\Yiiq,
-    Yiiq\commands\Base,
-    Yiiq\jobs\Data;
+use Yiiq\Yiiq;
+use Yiiq\commands\Base;
+use Yiiq\jobs\Data;
 
 /**
  * Yiiq worker command class.
@@ -110,7 +110,9 @@ class Worker extends Base
     protected function setProcessTitle($title, $queue = null)
     {
         $titleTemplate = \Yii::app()->yiiq->titleTemplate;
-        if (!$titleTemplate) return;
+        if (!$titleTemplate) {
+            return;
+        }
 
         $placeholders = array(
             '{name}'    => $this->instanceName,
@@ -122,8 +124,7 @@ class Worker extends Base
         $title = str_replace(array_keys($placeholders), array_values($placeholders), $titleTemplate);
         if (function_exists('cli_set_process_title')) {
             cli_set_process_title($title);
-        }
-        elseif (function_exists('setproctitle')) {
+        } elseif (function_exists('setproctitle')) {
             setproctitle($title);
         }
     }
@@ -164,7 +165,7 @@ class Worker extends Base
             ) {
                 \Yii::trace('Worker for queue '.$queue.' already running.');
                 exit(1);
-            } 
+            }
         }
     }
 
@@ -233,7 +234,7 @@ class Worker extends Base
         switch ($message) {
             case Yiiq::COMMAND_NEWJOB:
                 if (
-                    !empty($params[0]) 
+                    !empty($params[0])
                     && in_array($params[0], $this->queues)
                 ) {
                     $yiiq->unsubscribe();
@@ -262,7 +263,7 @@ class Worker extends Base
      * 
      * @return boolean
      */
-    protected function hasFreeThread()  
+    protected function hasFreeThread()
     {
         return $this->getThreadsCount() < $this->maxThreads;
     }
@@ -294,7 +295,7 @@ class Worker extends Base
             $jobId = $this->pidToJob[$childPid];
             unset($this->pidToJob[$childPid]);
 
-            // If status is non-zero or job is still marked as executing, 
+            // If status is non-zero or job is still marked as executing,
             // child process failed.
             if ($status || \Yii::app()->yiiq->isExecuting($jobId)) {
                 \Yii::app()->yiiq->restoreJob($jobId);
@@ -336,17 +337,17 @@ class Worker extends Base
         // Try to fork process.
         $childPid = pcntl_fork();
 
-        // Force reconnect to redis for parent and child due to bug in PhpRedis (https://github.com/nicolasff/phpredis/issues/474).
+        // Force reconnect to redis for parent and child due to bug in PhpRedis
+        // (https://github.com/nicolasff/phpredis/issues/474).
         \Yii::app()->redis->getClient(true);
-
-        // If we're in parent process, add child pid to pool and return.
+        
         if ($childPid > 0) {
+            // If we're in parent process, add child pid to pool and return.
             $this->pidToJob[$childPid] = $jobData->id;
             $this->getChildPool()->add($childPid);
             return;
-        }
-        // If we're failed to fork process, restore job and exit.
-        elseif ($childPid < 0) {
+        } elseif ($childPid < 0) {
+            // If we're failed to fork process, restore job and exit.
             \Yii::app()->restoreJob($jobData->id);
             return;
         }
@@ -390,7 +391,9 @@ class Worker extends Base
                 // Handle signals.
                 $this->dispatchSignals();
 
-                if ($this->shutdown) break;
+                if ($this->shutdown) {
+                    break;
+                }
 
                 // Look for new job.
                 // Iterate over all watched queues, stop when new job found.
@@ -405,22 +408,30 @@ class Worker extends Base
                 }
                 
                 // No job was found - exit loop.
-                if (!$jobData) break;
+                if (!$jobData) {
+                    break;
+                }
 
                 // Execute found job.
                 $this->runJob($queue, $jobData);
             }
 
-            if ($this->shutdown) break;
+            if ($this->shutdown) {
+                break;
+            }
 
             // If no free slots available wait for any child to exit. Otherwise just wait some time.
             if (!$this->hasFreeThread()) {
-                $this->setProcessTitle('no free threads ('.$this->maxThreads.' threads)');
+                $this->setProcessTitle(
+                    'no free threads ('.$this->maxThreads.' threads)'
+                );
 
                 $this->waitForThread();
-            }
-            else {
-                $this->setProcessTitle('no new jobs ('.$this->getThreadsCount().' of '.$this->maxThreads.' threads busy)');    
+            } else {
+                $this->setProcessTitle(
+                    'no new jobs ('.$this->getThreadsCount()
+                    .' of '.$this->maxThreads.' threads busy)'
+                );
                 
                 // Wait a little before next loop.
                 usleep(500000);
@@ -466,5 +477,4 @@ class Worker extends Base
         
         \Yii::trace('Terminated yiiq worker '.$this->pid.'.');
     }
-
 }

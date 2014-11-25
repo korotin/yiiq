@@ -4,8 +4,13 @@
     <target name="help">
         <echo>Available commands:
 
+        * cs        - run phpcs
         * test      - test extension
         * help      - this message</echo>
+    </target>
+
+    <target name="cs">
+        <exec command="./vendor/bin/phpcs --ignore=vendor/,tests/ --report=full --standard=PSR2 ." passthru="true" checkreturn="true"/>
     </target>
 
     <target name="test">

@@ -23,8 +23,8 @@ class Base extends \CConsoleCommand
     public function run($args)
     {
         \Yii::getLogger()->autoFlush = 1;
-        \Yii::getLogger()->detachEventHandler('onFlush',[\Yii::app()->log,'collectLogs']);
-        \Yii::getLogger()->attachEventHandler('onFlush',[$this,'processLogs']);
+        \Yii::getLogger()->detachEventHandler('onFlush', [\Yii::app()->log, 'collectLogs']);
+        \Yii::getLogger()->attachEventHandler('onFlush', [$this, 'processLogs']);
         parent::run($args);
     }
 
@@ -33,11 +33,9 @@ class Base extends \CConsoleCommand
         static $routes;
         $logger = \Yii::getLogger();
         $routes = isset($routes) ? $routes : \Yii::app()->log->getRoutes();
-        foreach($routes as $route)
-        {
-            if($route->enabled)
-            {
-                $route->collectLogs($logger,true);
+        foreach ($routes as $route) {
+            if ($route->enabled) {
+                $route->collectLogs($logger, true);
                 $route->logs = [];
             }
         }

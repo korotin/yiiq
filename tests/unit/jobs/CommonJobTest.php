@@ -26,6 +26,8 @@ class CommonJobTest extends JobCase
 
         usleep(1500000);
 
+        $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
+        $this->assertFalse(\Yii::app()->yiiq->isCompleted($id));
         $this->assertTrue(\Yii::app()->yiiq->isExecuting($id));
 
         usleep(2500000);

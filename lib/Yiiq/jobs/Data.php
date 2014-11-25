@@ -65,5 +65,4 @@ class Data
 
         return \CJSON::encode($data);
     }
-
 }

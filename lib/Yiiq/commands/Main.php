@@ -10,8 +10,8 @@
 
 namespace Yiiq\commands;
 
-use Yiiq\Yiiq,
-    Yiiq\commands\Base;
+use Yiiq\Yiiq;
+use Yiiq\commands\Base;
 
 /**
  * Yiiq main command class.
@@ -46,7 +46,7 @@ class Main extends Base
         $threads = abs((int) $threads) ?: Yiiq::DEFAULT_THREADS;
 
         // Set log file name if $log is not empty, otherwise disable error logging.
-        $log = 
+        $log =
             $log
                 ? \Yii::getPathOfAlias('application.runtime').DIRECTORY_SEPARATOR.$log
                 : '/dev/null';
@@ -80,8 +80,7 @@ class Main extends Base
                 }
                 echo "Done.\n";
             }
-        }
-        else {
+        } else {
             echo "No pids found.\n";
         }
     }
@@ -93,5 +92,4 @@ class Main extends Base
     {
         \Yii::app()->getComponent('yiiq')->check();
     }
-    
 }
