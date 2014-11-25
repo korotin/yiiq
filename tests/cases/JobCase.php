@@ -12,6 +12,9 @@ namespace Yiiq\tests\cases;
 
 abstract class JobCase extends TestCase
 {
+    const TIME_TO_START = 100000;
+    const TIME_FOR_JOB  = 500000;
+
     public function startParametersProvider()
     {
         return [
@@ -52,7 +55,7 @@ abstract class JobCase extends TestCase
 
     protected function waitForJobs($threads, $jobs, $bad = false)
     {
-        $timeForJob = 400000 + ($bad ? array_sum(\Yii::app()->yiiq->faultIntervals) * 1000000 * 1.4 : 0);
+        $timeForJob = self::TIME_FOR_JOB + ($bad ? array_sum(\Yii::app()->yiiq->faultIntervals) * (1000000 + self::TIME_FOR_JOB) : 0);
         $timeForAllJobs = ceil(($jobs * $timeForJob) / $threads);
         if ($timeForAllJobs < $timeForJob) {
             $timeForAllJobs = $timeForJob;

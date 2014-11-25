@@ -83,6 +83,7 @@ class SimpleJobTest extends JobCase
         $this->startYiiq($queue, $threads);
 
         $this->waitForJobs($threads, 20);
+        usleep(self::TIME_TO_START);
         
         $this->assertEquals(0, filesize(__DIR__.'/../../runtime/yiiq.log'));
         for ($i = 1; $i < 20; $i++) {

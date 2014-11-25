@@ -28,7 +28,7 @@ class ScheduledJobTest extends JobCase
         $ids[] = \Yii::app()->yiiq->enqueueJobAt(time() + 2, '\Yiiq\tests\jobs\GoodJob', array('file' => 'goodjob_at'), $queue);
         $ids[] = \Yii::app()->yiiq->enqueueJobIn(2, '\Yiiq\tests\jobs\GoodJob', array('file' => 'goodjob_in'), $queue);
 
-        usleep(500000);
+        usleep(self::TIME_FOR_JOB);
 
         foreach ($ids as $id) {
             $this->assertTrue(\Yii::app()->yiiq->hasJob($id));
@@ -37,7 +37,7 @@ class ScheduledJobTest extends JobCase
             $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
         }
 
-        usleep(1500000);
+        usleep(self::TIME_FOR_JOB + 2000000);
         $this->waitForJobs($threads, 2);
 
         $this->assertTrue(file_exists(__DIR__.'/../../runtime/goodjob_at'));
