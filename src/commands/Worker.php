@@ -229,6 +229,10 @@ class Worker extends Base
         }
     }
 
+    /**
+     * Wait some time for signal.
+     * If signal received, it will be correclty handled.
+     */
     protected function waitForSignals()
     {
         $handlers = $this->getSignalHandlers();
@@ -255,32 +259,6 @@ class Worker extends Base
             $this->signalHandled = false;
             pcntl_signal_dispatch();
         } while ($this->signalHandled);
-    }
-
-    /**
-     * Handle broadcast message.
-     * 
-     * @param  \Yiiq\Yiiq $yiiq
-     * @param  string $message
-     * @param  array $params
-     */
-    public function handleMessage(Yiiq $yiiq, $message, $params)
-    {
-        switch ($message) {
-            case Yiiq::COMMAND_NEWJOB:
-                if (
-                    !empty($params[0])
-                    && in_array($params[0], $this->queues)
-                ) {
-                    $yiiq->unsubscribe();
-                }
-                break;
-
-            case Yiiq::COMMAND_EXIT:
-                $this->shutdown = true;
-                $yiiq->unsubscribe();
-                break;
-        }
     }
 
     /**

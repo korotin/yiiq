@@ -12,8 +12,8 @@ namespace Yiiq\tests\cases;
 
 abstract class JobCase extends TestCase
 {
-    const TIME_TO_START = 100000;
-    const TIME_FOR_JOB  = 500000;
+    const TIME_TO_START = 200000;
+    const TIME_FOR_JOB  = 600000;
 
     public function startParametersProvider()
     {
