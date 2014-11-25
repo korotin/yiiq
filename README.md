@@ -42,7 +42,7 @@ Add path to ```\Yiiq``` namespace to ```aliases``` array (must be added in both 
 
     // ...
 
-    'Yiiq' => __DIR__.'/../vendor/herroffizier/yiiq/lib/Yiiq',
+    'Yiiq' => __DIR__.'/../vendor/herroffizier/yiiq/src',
 
     // ...
 

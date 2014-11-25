@@ -9,7 +9,7 @@
         }
     ],
     "autoload": {
-        "psr-4": {"Yiiq\\tests\\": "tests", "Yiiq\\": "lib/Yiiq"}
+        "psr-4": {"Yiiq\\tests\\": "tests/", "Yiiq\\": "src/"}
     },
     "require": {
         "php": ">=5.4",
@@ -18,7 +18,6 @@
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "dev-master",
-        "fabpot/php-cs-fixer": "1.2.*@dev",
         "phpunit/phpunit": "~3.7",
         "phpunit/phpunit-story": "*",
         "phpunit/dbunit": "*",

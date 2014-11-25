@@ -7,7 +7,7 @@ return array(
     'extensionPath' => __DIR__.'/../..',
 
     'aliases' => array(
-        'Yiiq' => __DIR__.'/../../lib/Yiiq',
+        'Yiiq' => __DIR__.'/../../src',
         'Yiiq\tests' => __DIR__.'/../',
         'vendor' => __DIR__.'/../../vendor',
     ),
