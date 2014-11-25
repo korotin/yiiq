@@ -13,6 +13,6 @@ install:
 
 before_script: 
     - phpenv config-add travis-php.ini
-    - if [[ "$(phpenv version-name)" == "5.4" ]]; then pecl install proctitle; fi
+    - if [[ "$(phpenv version-name)" == "5.4" ]]; then pecl install proctitle-0.1.2; fi
 
 script: ./vendor/bin/phing test
