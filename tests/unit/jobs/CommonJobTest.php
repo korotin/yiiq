@@ -24,11 +24,11 @@ class CommonJobTest extends JobCase
 
         $id = \Yii::app()->yiiq->enqueueJob('\Yiiq\tests\jobs\WaitJob', ['sleep' => 2], $queue);
 
-        usleep(1000000);
+        usleep(1500000);
 
         $this->assertTrue(\Yii::app()->yiiq->isExecuting($id));
 
-        usleep(2200000);
+        usleep(2500000);
 
         $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
         $this->assertTrue(\Yii::app()->yiiq->isCompleted($id));

@@ -68,16 +68,6 @@ abstract class TestCase extends \CTestCase
         }
     }
 
-    protected function waitForJobs($threads, $jobs, $bad = false)
-    {
-        $timeForJob = 600000 + ($bad ? array_sum(\Yii::app()->yiiq->faultIntervals) * 1000000 * 1.6 : 0);
-        $timeForAllJobs = ceil(($jobs * $timeForJob) / $threads);
-        if ($timeForAllJobs < $timeForJob) {
-            $timeForAllJobs = $timeForJob;
-        }
-        usleep($timeForAllJobs);
-    }
-
     public function setUp()
     {
         $this->cleanup();
