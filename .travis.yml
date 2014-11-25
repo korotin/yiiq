@@ -11,6 +11,8 @@ php:
 install:
     - composer install
 
-before_script: phpenv config-add travis-php.ini
+before_script: 
+    - phpenv config-add travis-php.ini
+    - if [[ "$(phpenv version-name)" == "5.4" ]]; then pecl install proctitle; fi
 
 script: ./vendor/bin/phing test
