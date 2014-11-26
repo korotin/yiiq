@@ -10,16 +10,21 @@
 
 namespace Yiiq\tests\unit\jobs;
 
-use Yiiq\tests\cases\JobCase;
+use Yiiq\tests\cases\Job;
 
-class StressJobTest extends JobCase
+class StressTest extends Job
 {
     public function testManyJobs()
     {
-        $queue = 'default';
-        $threads = 20;
+        $procTitle  = $this->getBaseProcessTitle();
+        $logPath    = $this->getLogPath();
+        $goodFile   = 'goodjob_'.TEST_TOKEN;
+        $goodPath   = $this->getRuntimePath().'/'.$goodFile;
 
-        $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
+        $queue      = 'default_'.TEST_TOKEN;
+        $threads    = 20;
+
+        $this->assertNotContains($procTitle, $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
         $results = [];
@@ -34,13 +39,13 @@ class StressJobTest extends JobCase
 
         $this->stopYiiq();
 
-        $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
-        $size = filesize(__DIR__.'/../../runtime/yiiq.log');
+        $this->assertNotContains($procTitle, $this->exec('ps aux'));
+        $size = filesize($logPath);
         $this->assertEquals(0, $size);
 
         $this->startYiiq($queue, $threads);
         usleep(self::TIME_TO_START);
-        $this->assertContains('YiiqTest', $this->exec('ps aux'));
+        $this->assertContains($procTitle, $this->exec('ps aux'));
 
         for ($i = 0; $i < 200; $i++) {
             $result = rand();
@@ -53,17 +58,17 @@ class StressJobTest extends JobCase
 
         $this->stopYiiq();
 
-        $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
-        $size = filesize(__DIR__.'/../../runtime/yiiq.log');
+        $this->assertNotContains($procTitle, $this->exec('ps aux'));
+        $size = filesize($logPath);
         $this->assertEquals(0, $size);
 
         $this->startYiiq($queue, $threads);
         usleep(self::TIME_TO_START);
-        $this->assertContains('YiiqTest', $this->exec('ps aux'));
+        $this->assertContains($procTitle, $this->exec('ps aux'));
 
         $this->waitForJobs($threads, 200);
 
-        $size = filesize(__DIR__.'/../../runtime/yiiq.log');
+        $size = filesize($logPath);
         $this->assertEquals(0, $size);
 
         foreach ($results as $id => $result) {
@@ -73,6 +78,7 @@ class StressJobTest extends JobCase
             $this->assertEquals($result, \Yii::app()->yiiq->getJobResult($id));
         }
 
+        $this->assertContains($procTitle, $this->exec('ps aux'));
         $this->assertTrue(\Yii::app()->yiiq->check(false));
         $this->stopYiiq();
     }

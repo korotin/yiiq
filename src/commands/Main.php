@@ -51,7 +51,14 @@ class Main extends Base
                 ? \Yii::getPathOfAlias('application.runtime').DIRECTORY_SEPARATOR.$log
                 : '/dev/null';
 
-        $command = 'nohup sh -c "'.escapeshellarg(\Yii::app()->basePath.'/yiic').' yiiqWorker run ';
+        // Used for testing with paratest.
+        if (defined('TEST_TOKEN')) {
+            $vars = 'TEST_TOKEN=\''.TEST_TOKEN.'\' ';
+        } else {
+            $vars = '';
+        }
+
+        $command = 'nohup sh -c "'.$vars.escapeshellarg(\Yii::app()->basePath.'/yiic').' yiiqWorker run ';
         foreach ($queues as $queue) {
             $command .= '--queue='.$queue.' ';
         }
@@ -68,7 +75,6 @@ class Main extends Base
     public function actionStop()
     {
         \Yii::app()->yiiq->check();
-
         $pids = \Yii::app()->yiiq->pidPool->getData();
         if ($pids) {
             foreach ($pids as $pid) {

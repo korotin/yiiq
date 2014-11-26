@@ -10,22 +10,17 @@
 
 namespace Yiiq\tests\cases;
 
-abstract class JobCase extends TestCase
+abstract class Job extends Base
 {
-    const TIME_TO_START = 200000;
-    const TIME_FOR_JOB  = 600000;
+    const TIME_FOR_JOB  = 900000;
 
     public function startParametersProvider()
     {
         return [
-            ['default', 1],
-            ['default', 5],
-            ['default', 10],
-            ['default', 15],
-            ['custom', 1],
-            ['custom', 5],
-            ['custom', 10],
-            ['custom', 15],
+            /*['default_'.TEST_TOKEN, 1],
+            ['default_'.TEST_TOKEN, 5],
+            ['default_'.TEST_TOKEN, 10],*/
+            ['default_'.TEST_TOKEN, 15],
         ];
     }
 
@@ -33,8 +28,8 @@ abstract class JobCase extends TestCase
     {
         return [
             ['\Yiiq\tests\jobs\BadJob'], 
-            ['\Yiiq\tests\jobs\YiiqBadJob2'],
-            ['\Yiiq\tests\jobs\YiiqBadJob3'],
+            //'\Yiiq\tests\jobs\YiiqBadJob2'],
+            //['\Yiiq\tests\jobs\YiiqBadJob3'],
         ];
     }
 

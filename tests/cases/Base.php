@@ -10,9 +10,36 @@
 
 namespace Yiiq\tests\cases;
 
-abstract class TestCase extends \CTestCase
+abstract class Base extends \CTestCase
 {
+    const TIME_TO_START = 500000;
+    
     protected $started = false;
+
+    protected function getBaseProcessTitle()
+    {
+        return '['.\Yii::app()->yiiq->name.']';
+    }
+
+    protected function getIdleWorkerTitle($queue, $threads)
+    {
+        return '[YiiqTest] worker@'.$queue.': no new jobs (0 of '.$threads.' threads busy)';
+    }
+
+    protected function getRuntimePath()
+    {
+        return __DIR__.'/../runtime';
+    }
+
+    protected function getLogName()
+    {
+        return 'yiiq_'.TEST_TOKEN.'.log';
+    }
+
+    protected function getLogPath()
+    {
+        return $this->getRuntimePath().'/'.$this->getLogName();
+    }
 
     protected function exec($cmd)
     {
@@ -27,7 +54,7 @@ abstract class TestCase extends \CTestCase
         return $command;
     }
 
-    protected function startYiiq($queue = 'default', $threads = 5)
+    protected function startYiiq($queue = null, $threads = 5)
     {
         if ($this->started)
             throw new \CException('Yiiq already started');
@@ -36,8 +63,9 @@ abstract class TestCase extends \CTestCase
 
         $command = $this->createCommand();
         ob_start();
+        if (!$queue) $queue = 'default_'.TEST_TOKEN;
         if (!is_array($queue)) $queue = [$queue];
-        $command->actionStart($queue, $threads, 'yiiq.log');
+        $command->actionStart($queue, $threads, $this->getLogName());
         ob_end_clean();
     }
 
@@ -60,7 +88,7 @@ abstract class TestCase extends \CTestCase
             $this->stopYiiq();
         }
 
-        $this->exec('rm -rf '.__DIR__.'/../runtime/*');
+        $this->exec('rm -rf '.__DIR__.'/../runtime/*'.TEST_TOKEN.'*');
 
         $keys = \Yii::app()->redis->keys('*');
         foreach ($keys as $key) {

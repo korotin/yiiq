@@ -10,22 +10,22 @@
 
 namespace Yiiq\tests\unit\common;
 
-use Yiiq\tests\cases\TestCase;
+use Yiiq\tests\cases\Base;
 
-class CommandTest extends TestCase
+class CommandTest extends Base
 {
     
     public function testStartAndStop()
     {
-        $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
+        $this->assertNotContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
         $this->startYiiq();
-        usleep(100000);
-        $this->assertContains('YiiqTest', $this->exec('ps aux'));
+        usleep(self::TIME_TO_START);
+        $this->assertContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
         $this->stopYiiq();
-        $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
+        $this->assertNotContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
 
-        $this->assertFileExists(__DIR__.'/../../runtime/yiiq.log');
-        $this->assertEquals(0, filesize(__DIR__.'/../../runtime/yiiq.log'));
+        $this->assertFileExists($this->getLogPath());
+        $this->assertEquals(0, filesize($this->getLogPath()));
     }
 
 }

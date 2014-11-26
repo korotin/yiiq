@@ -10,9 +10,9 @@
 
 namespace Yiiq\tests\unit\common;
 
-use Yiiq\tests\cases\TestCase;
+use Yiiq\tests\cases\Base;
 
-class JobProducerTest extends TestCase
+class JobProducerTest extends Base
 {
     public function testDefaults()
     {

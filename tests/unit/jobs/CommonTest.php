@@ -10,16 +10,16 @@
 
 namespace Yiiq\tests\unit\jobs;
 
-use Yiiq\tests\cases\JobCase;
+use Yiiq\tests\cases\Job;
 
-class CommonJobTest extends JobCase
+class CommonTest extends Job
 {
     /**
      * @dataProvider startParametersProvider
      */
     public function testJobStates($queue, $threads)
     {
-        $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
+        $this->assertNotContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
         $id = \Yii::app()->yiiq->enqueueJob('\Yiiq\tests\jobs\WaitJob', ['sleep' => 2], $queue);
@@ -44,7 +44,7 @@ class CommonJobTest extends JobCase
      */
     public function testResultSaving($queue, $threads)
     {
-        $this->assertNotContains('YiiqTest', $this->exec('ps aux'));
+        $this->assertNotContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
         $result = rand();
@@ -52,7 +52,7 @@ class CommonJobTest extends JobCase
         
         $this->waitForJobs($threads, 1);
 
-        $size = filesize(__DIR__.'/../../runtime/yiiq.log');
+        $size = filesize($this->getLogPath());
         $this->assertEquals(0, $size);
         $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
         $this->assertTrue(\Yii::app()->yiiq->isCompleted($id));
