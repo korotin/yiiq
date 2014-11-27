@@ -35,8 +35,8 @@ class GoodTest extends Job
         $ids[] = \Yii::app()->yiiq->enqueueJobAt(time() + 2, '\Yiiq\tests\jobs\GoodJob', ['file' => $goodAtFile], $queue);
         $ids[] = \Yii::app()->yiiq->enqueueJobAfter(2, '\Yiiq\tests\jobs\GoodJob', ['file' => $goodAfterFile], $queue);
 
-        usleep(self::TIME_FOR_JOB);
-        
+        usleep(100000);
+
         foreach ($ids as $id) {
             $this->assertTrue(\Yii::app()->yiiq->hasJob($id));
             $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
