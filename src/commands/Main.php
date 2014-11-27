@@ -91,7 +91,45 @@ class Main extends Base
     }
 
     /**
-     * Check redis db consistency.
+     * Get worker statuses.
+     */
+    public function actionStatus()
+    {
+        $status = 0;
+        $pids = \Yii::app()->yiiq->pidPool->getData();
+        if ($pids) {
+            $dead = [];
+            $alive = [];
+            foreach ($pids as $pid) {
+                $isAlive = \Yii::app()->yiiq->isPidAlive($pid);
+                if ($isAlive) {
+                    $alive[] = $pid;
+                } else {
+                    $dead[] = $pid;
+                }
+            }
+
+            if ($dead) {
+                if ($alive) {
+                    echo "Some dead processes (".implode(', ', $dead).") found! Run './yiic yiiq check' to remove them.\n";
+                }
+                else {
+                    echo "All processes (".implode(', ', $dead).") are dead. System is not working.\n";
+                }
+                $status = 1;
+            } else {
+                echo "All processes (".implode(', ', $alive).") are alive. Everything looks good.\n";
+            }
+        } else {
+            echo "No processes found. System is not working.\n";
+            $status = 1;
+        }
+
+        exit($status);
+    }
+
+    /**
+     * Check system health and fix problems.
      */
     public function actionCheck()
     {

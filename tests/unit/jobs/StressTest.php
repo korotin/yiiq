@@ -49,7 +49,7 @@ class StressTest extends Job
 
         for ($i = 0; $i < 200; $i++) {
             $result = rand();
-            $id = \Yii::app()->yiiq->enqueueJobIn(0, '\Yiiq\tests\jobs\ReturnJob', ['result' => $result], $queue);
+            $id = \Yii::app()->yiiq->enqueueJobAfter(0, '\Yiiq\tests\jobs\ReturnJob', ['result' => $result], $queue);
 
             $results[$id] = $result; 
         }

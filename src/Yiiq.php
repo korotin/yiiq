@@ -659,16 +659,16 @@ class Yiiq extends \CApplicationComponent
     }
 
     /**
-     * Create a job in given queue wich will be executed after given amount of seconds.
+     * Create a job in given queue wich will be executed after specified interval.
      *
-     * @param  int $interval            amount of seconds to wait before execution
+     * @param  int $interval            time to wait before execution in seconds
      * @param  string $class            job class extended from \Yiiq\jobs\Base
      * @param  array[optional]  $args   values for job object properties
      * @param  string[optional] $queue  \Yiiq\Yiiq::DEFAULT_QUEUE by default
      * @param  string[optional] $id     globally unique job id
      * @return mixed                    job id or null if job with same id extists
      */
-    public function enqueueJobIn($interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
+    public function enqueueJobAfter($interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
         $interval = (int) floor($interval);
         return $this->enqueueJobAt(time() + $interval, $class, $args, $queue, $id);
@@ -748,7 +748,7 @@ class Yiiq extends \CApplicationComponent
                         $producer->id
                     );
                 } else {
-                    return $this->enqueueJobIn(
+                    return $this->enqueueJobAfter(
                         $producer->interval,
                         $producer->class,
                         $producer->args,

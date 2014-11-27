@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/herroffizier/yiiq.svg?branch=master)](https://travis-ci.org/herroffizier/yiiq)
 
-**Yiiq** is a simple and powerful [Redis](http://redis.io/)-based background job manager for Yii Framework.
+**Yiiq** is a powerful [Redis](http://redis.io/)-backed multithreaded background job manager for Yii Framework designed with stability and simplicity in mind.
 
 To run a job just wrap it in class and type: 
 ```php
@@ -12,12 +12,12 @@ And it's done!
 
 ## Features
 
-* **Queues.** Jobs may be grouped in queues. This approach helps to prioritize jobs.
-* **Job types.** Job may be one of three types: simple, scheduled or repeatable. Simple job executes once as soon as daemon has free resources. Scheduled job executes once at defined time. Repeatable job executes infinitely with defined interval.
-* **Job status.** Each job has an unique id and extension provides information on job execution status.
-* **Job results.** If a job returns some result, it will be automatically saved to Redis and can be accessed via extension.
-* **Failure handling.** Daemon handles job failures. Once a job failed, daemon will run it again until job failure counter exceeds limit.
-* **Self-checking.** Extension checks its storage for dead workers, failed jobs and so on to keep storage size as small as possible.
+* **Stability.** If job crashed, daemon stays alive. If server crashed, daemon recovers its state.
+* **Multithreading.** You can run as many processes as you need.
+* **Queueing.** Jobs may be grouped in different queues which handled by different processes.
+* **Clarity.** You can track your job status at every point of time.
+* **Scheduling.** Jobs may be executed at certain time or immediately.
+* **Feedback.** Jobs may return result back.
 
 ## Requirements
 
@@ -30,19 +30,22 @@ And it's done!
 
 ## Installation
 
-Install **Yiiq** via Composer:
+Following steps are described assuming the fact that you have default Yii application layout, which contains two config files: ```main.php``` and ```console.php``` for web and console applications accordingly. **Yiiq** consists of two main parts too: framework extension and daemon. Extension queues jobs and daemon executes them. In view of the fact that daemon acts as console application, it will use ```console.php``` config file, whilst extension will use both files depending on application type in which it's being used. So pay attention to the fact that **Yiiq** and **YiiRedis** extensions must be included in both files.
+
+At first, install **Yiiq** via Composer:
 
 ```
 composer require herroffizier/yiiq:dev-master
 ```
 
-Add path to ```\Yiiq``` namespace to ```aliases``` array (must be added in both ```main.php``` and ```console.php```):
+After that, add path to ```\Yiiq``` namespace to ```aliases``` array (must be added in both ```main.php``` and ```console.php```):
 
 ```php
 'aliases' => array(
 
     // ...
 
+    // Replace following path with correct one.
     'Yiiq' => __DIR__.'/../vendor/herroffizier/yiiq/src',
 
     // ...
@@ -50,7 +53,7 @@ Add path to ```\Yiiq``` namespace to ```aliases``` array (must be added in both 
 ),
 ```
 
-Add extension to your ```components``` array (must be added in both files also):
+Now we need to set up extension. Add it to your ```components``` array (must be added in both files also):
 
 ```php
 'components' => array(
@@ -67,8 +70,9 @@ Add extension to your ```components``` array (must be added in both files also):
 
 ),
 ```
+Note, that **YiiRedis** extension must be loaded in both files too!
 
-Add following commands to ```commandMap``` in ```console.php```:
+Finally, add following commands to ```commandMap``` in ```console.php```:
 
 ```php
 'commandMap' => array(
@@ -90,16 +94,17 @@ Add following commands to ```commandMap``` in ```console.php```:
 ),
 ```
 
-Finally, run daemon:
+Now it's time to run daemon. Remember, daemon is responsible for job executing, therefore it must be runnign all the time. Type following command in ```protected``` folder of your application.
 
 ```
 ./yiic yiiq start --log=yiiq.log
 ```
+```log``` parameter is optional but it highly recommended for first run at least.
 
-Run ```ps aux | grep Yiiq``` to check if daemon started correctly. You should see string containing something like this:
+Run ```./yiic yiiq status``` to check if daemon started correctly. You should see something like this:
 
 ```
-Yiiq [Yiiq test instance] worker@default: no new jobs (0 of 5 threads busy)
+All processes (28235) are alive. Everything looks good.
 ```
 
 If daemon is not running refer to ```application.log``` and ```yiiq.log``` (both stored in ```runtime``` folder) for details.
@@ -108,7 +113,7 @@ If daemon is not running refer to ```application.log``` and ```yiiq.log``` (both
 
 ### Creating jobs
 
-To create a job at first you should extend ```\Yiiq\jobs\Base``` class and implement it's ```run()``` method. Take a look at example:
+To create a job you should extend ```\Yiiq\jobs\Base``` class and implement it's ```run()``` method:
 
 ```php
 class YiiqDummyJob extends \Yiiq\jobs\Base
@@ -121,9 +126,9 @@ class YiiqDummyJob extends \Yiiq\jobs\Base
     public $sleep = 10;
 
     /**
-     * This method should contain all job logic.
+     * This method should contain all the job logic.
      *
-     * @return {mixed} all returned data will be saved in redis 
+     * @return {mixed} all returned data will be saved in Redis 
      *                 (for non-repeatable jobs)
      */
     public function run()
@@ -136,11 +141,11 @@ class YiiqDummyJob extends \Yiiq\jobs\Base
 }
 ```
 
-As we said above there are three types of jobs in **Yiiq**: simple, scheduled and repeatable. Job type depends on method used to schedule this job. 
+In fact there are three types of jobs in **Yiiq**: simple, scheduled and repeatable. First one executed immediately, second one will execute at certain time, and third one will run infinitely in accordance with specified interval. 
 
 #### Simple job
 
-To add a simple job you may use one of following calls. This job will be executed as soon as possible and only once. 
+To add a simple job you may use one of following calls. As you already know, this job will be executed as soon as possible and only once. 
 
 ```php
 // Add YiiqDummyJob with default arguments to default queue.
@@ -155,21 +160,17 @@ Yii::app()->yiiq->enqueueJob('YiiqDummyJob', ['sleep' => 5], 'custom');
 
 #### Scheduled job
 
-To schedule a job at concrete time, you must specify time or interval:
+To schedule a job at certain time, you must specify time or interval:
 
 ```php
-// Run job after one minute.
+// Run job at certain time.
 Yii::app()->yiiq->enqueueJobAt(time() + 60, 'YiiqDummyJob');
 
-// Same, but a little bit friendly.
-Yii::app()->yiiq->enqueueJobIn(60, 'YiiqDummyJob');
+// Run job after 60 seconds. In fact exactly the same as above.
+Yii::app()->yiiq->enqueueJobAfter(60, 'YiiqDummyJob');
 ```
 
 #### Repeatable job
-
-Repeatable job type has two diffeneces against other job types:
-* For repeatable jobs job id becomes required parameter,
-* Repeatable job cannot return any data.
 
 To create a repeatable job, you may use following code:
 
@@ -177,3 +178,4 @@ To create a repeatable job, you may use following code:
 // Run job with id 'myJob' each 300 seconds.
 Yii::app()->yiiq->enqueueRepeatableJob('myJob', 300, 'YiiqDummyJob');
 ```
+Note that repeatable job cannot return any data back to **Yiiq**.

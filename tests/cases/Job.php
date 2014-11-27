@@ -12,7 +12,7 @@ namespace Yiiq\tests\cases;
 
 abstract class Job extends Base
 {
-    const TIME_FOR_JOB  = 1000000;
+    const TIME_FOR_JOB  = 1500000;
 
     public function startParametersProvider()
     {
@@ -28,8 +28,8 @@ abstract class Job extends Base
     {
         return [
             ['\Yiiq\tests\jobs\BadJob'], 
-            ['\Yiiq\tests\jobs\YiiqBadJob2'],
-            ['\Yiiq\tests\jobs\YiiqBadJob3'],
+            ['\Yiiq\tests\jobs\BadJob2'],
+            ['\Yiiq\tests\jobs\BadJob3'],
         ];
     }
 

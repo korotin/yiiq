@@ -23,20 +23,20 @@ class GoodTest extends Job
         $logPath    = $this->getLogPath();
         $goodAtFile = 'goodjob_at_'.TEST_TOKEN;
         $goodAtPath = $this->getRuntimePath().'/'.$goodAtFile;
-        $goodInFile = 'goodjob_in_'.TEST_TOKEN;
-        $goodInPath = $this->getRuntimePath().'/'.$goodInFile;
+        $goodAfterFile = 'goodjob_after_'.TEST_TOKEN;
+        $goodAfterPath = $this->getRuntimePath().'/'.$goodAfterFile;
 
         $this->assertNotContains($procTitle, $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
         $this->assertFalse(file_exists($goodAtPath));
-        $this->assertFalse(file_exists($goodInPath));
+        $this->assertFalse(file_exists($goodAfterPath));
         $ids = [];
         $ids[] = \Yii::app()->yiiq->enqueueJobAt(time() + 2, '\Yiiq\tests\jobs\GoodJob', ['file' => $goodAtFile], $queue);
-        $ids[] = \Yii::app()->yiiq->enqueueJobIn(2, '\Yiiq\tests\jobs\GoodJob', ['file' => $goodInFile], $queue);
+        $ids[] = \Yii::app()->yiiq->enqueueJobAfter(2, '\Yiiq\tests\jobs\GoodJob', ['file' => $goodAfterFile], $queue);
 
         usleep(self::TIME_FOR_JOB);
-
+        
         foreach ($ids as $id) {
             $this->assertTrue(\Yii::app()->yiiq->hasJob($id));
             $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
@@ -48,7 +48,7 @@ class GoodTest extends Job
         $this->waitForJobs($threads, 2);
 
         $this->assertTrue(file_exists($goodAtPath));
-        $this->assertTrue(file_exists($goodInPath));
+        $this->assertTrue(file_exists($goodAfterPath));
         foreach ($ids as $id) {
             $this->assertFalse(\Yii::app()->yiiq->hasJob($id));
             $this->assertTrue(\Yii::app()->yiiq->isCompleted($id));
