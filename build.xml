@@ -14,7 +14,7 @@
     </target>
 
     <target name="test">
-        <exec command="./vendor/bin/paratest --bootstrap=./tests/bootstrap.php --functional --processes=5 ./tests/unit/" passthru="true" checkreturn="true"/>
+        <exec command="./vendor/bin/paratest --bootstrap=./tests/bootstrap.php --functional --processes=10 ./tests/unit/" passthru="true" checkreturn="true"/>
     </target>
 
 </project>
