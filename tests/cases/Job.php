@@ -3,16 +3,16 @@
  * Yiiq - background job queue manager for Yii
  *
  * This file contains abstract test case for jobs.
- * 
+ *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  * @package yiiq.tests.cases
  */
 
-namespace Yiiq\tests\cases;
+namespace yiiq\tests\cases;
 
 abstract class Job extends Base
 {
-    const TIME_FOR_JOB  = 1500000;
+    const TIME_FOR_JOB  = 1600000;
 
     public function startParametersProvider()
     {

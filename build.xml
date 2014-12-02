@@ -55,7 +55,7 @@
     </target>
 
     <target name="travis-test">
-        <property name="paratest.processes" value="10"/>
+        <property name="paratest.processes" value="20"/>
 
         <phingcall target="lint"/>
         <phingcall target="cs"/>
