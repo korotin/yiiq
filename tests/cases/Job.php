@@ -8,7 +8,7 @@
  * @package yiiq.tests.cases
  */
 
-namespace yiiq\tests\cases;
+namespace Yiiq\tests\cases;
 
 abstract class Job extends Base
 {
