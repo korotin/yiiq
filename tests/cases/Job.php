@@ -27,7 +27,7 @@ abstract class Job extends Base
     public function badClassProvider()
     {
         return [
-            ['\Yiiq\tests\jobs\BadJob'], 
+            ['\Yiiq\tests\jobs\BadJob'],
             ['\Yiiq\tests\jobs\BadJob2'],
             ['\Yiiq\tests\jobs\BadJob3'],
         ];
@@ -39,7 +39,7 @@ abstract class Job extends Base
         $badClasses = $this->badClassProvider();
 
         $data = [];
-        foreach ($parameters as $parameter){
+        foreach ($parameters as $parameter) {
             foreach ($badClasses as $badClass) {
                 $data[] = array_merge($parameter, $badClass);
             }
@@ -50,7 +50,13 @@ abstract class Job extends Base
 
     protected function waitForJobs($threads, $jobs, $bad = false)
     {
-        $timeForJob = self::TIME_FOR_JOB + ($bad ? array_sum(\Yii::app()->yiiq->faultIntervals) * (1000000 + self::TIME_FOR_JOB) : 0);
+        $timeForJob =
+            self::TIME_FOR_JOB
+            + (
+                $bad
+                    ? array_sum(\Yii::app()->yiiq->faultIntervals) * (1000000 + self::TIME_FOR_JOB)
+                    : 0
+            );
         $timeForAllJobs = ceil(($jobs * $timeForJob) / $threads);
         if ($timeForAllJobs < $timeForJob) {
             $timeForAllJobs = $timeForJob;

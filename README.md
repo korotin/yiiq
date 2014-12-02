@@ -12,12 +12,12 @@ And it's done!
 
 ## Features
 
-* **Stability.** If job crashed, daemon stays alive. If server crashed, daemon recovers its state.
-* **Multithreading.** You can run as many processes as you need.
-* **Queueing.** Jobs may be grouped in different queues which handled by different processes.
-* **Clarity.** You can track your job status at every point of time.
-* **Scheduling.** Jobs may be executed at certain time or immediately.
-* **Feedback.** Jobs may return result back.
+* **Stability.**<br>If job crashed, daemon stays alive. If server crashed, daemon recovers its state with all unfinished jobs.
+* **Multithreading.**<br>You can run as many processes as you need.
+* **Queueing.**<br>Jobs may be grouped in different queues which handled by different processes.
+* **Clarity.**<br>You can track your job status at every point of time.
+* **Scheduling.**<br>Jobs may be executed at certain time or immediately. Once or many times.
+* **Feedback.**<br>Jobs may return result back to the extension.
 
 ## Requirements
 

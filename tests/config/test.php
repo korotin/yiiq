@@ -1,15 +1,6 @@
 <?php
 
-// Define paratest token.
-$token = getenv('TEST_TOKEN');
-if (!$token) {
-    $token = md5('no_token');
-} elseif (strlen($token) !== 32) {
-    $token = md5($token.'_'.microtime(true));
-}
-define('TEST_TOKEN',  $token);
-unset($token);
-
+require_once __DIR__.'/token.php';
 require_once __DIR__.'/../../vendor/autoload.php';
 
 return array(

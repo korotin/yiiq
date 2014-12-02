@@ -14,7 +14,6 @@ use Yiiq\tests\cases\Base;
 
 class CommandTest extends Base
 {
-    
     public function testStartAndStop()
     {
         $this->assertNotContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
@@ -27,5 +26,4 @@ class CommandTest extends Base
         $this->assertFileExists($this->getLogPath());
         $this->assertEquals(0, filesize($this->getLogPath()));
     }
-
 }

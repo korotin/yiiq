@@ -3,17 +3,17 @@
  * Yiiq - background job queue manager for Yii
  *
  * This file contains base test case.
- * 
+ *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  * @package yiiq.tests.cases
  */
 
-namespace Yiiq\tests\cases;
+namespace yiiq\tests\cases;
 
 abstract class Base extends \CTestCase
 {
     const TIME_TO_START = 500000;
-    
+
     protected $started = false;
 
     protected function getBaseProcessTitle()
@@ -45,34 +45,42 @@ abstract class Base extends \CTestCase
     {
         $lines = array();
         exec($cmd, $lines);
+
         return implode("\n", $lines);
     }
 
     protected function createCommand()
     {
         $command = new \Yiiq\commands\Main(null, null);
+
         return $command;
     }
 
     protected function startYiiq($queue = null, $threads = 5)
     {
-        if ($this->started)
+        if ($this->started) {
             throw new \CException('Yiiq already started');
+        }
 
         $this->started = true;
 
         $command = $this->createCommand();
         ob_start();
-        if (!$queue) $queue = 'default_'.TEST_TOKEN;
-        if (!is_array($queue)) $queue = [$queue];
+        if (!$queue) {
+            $queue = 'default_'.TEST_TOKEN;
+        }
+        if (!is_array($queue)) {
+            $queue = [$queue];
+        }
         $command->actionStart($queue, $threads, $this->getLogName());
         ob_end_clean();
     }
 
     protected function stopYiiq()
     {
-        if (!$this->started)
+        if (!$this->started) {
             throw new CException('Yiiq is not started');
+        }
 
         $this->started = false;
 
@@ -105,5 +113,4 @@ abstract class Base extends \CTestCase
     {
         $this->cleanup();
     }
-
 }

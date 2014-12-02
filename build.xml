@@ -1,20 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="yiiq" default="help">
+    <property name="paratest.defaultProcesses" value="5"/>
 
     <target name="help">
         <echo>Available commands:
 
         * cs        - run phpcs
+        * lint      - run php lint
+        * phpunit   - run phpunit
         * test      - test extension
         * help      - this message</echo>
     </target>
 
     <target name="cs">
-        <exec command="./vendor/bin/phpcs --ignore=./vendor/,./tests/ --report=full --standard=PSR2 ." passthru="true" checkreturn="true"/>
+        <exec 
+            command="./vendor/bin/phpcs --ignore=./vendor/,./tests/jobs/BadJob2.php --report=full --standard=PSR2 -p ." 
+            passthru="true" 
+            checkreturn="true"
+        />
+    </target>
+
+    <target name="lint">
+        <phplint 
+            haltonfailure="true"
+            deprecatedAsError="true"
+        >
+            <fileset dir=".">
+                <include name="**/*.php"/>
+                <exclude name="vendor/"/>
+                <exclude name="tests/jobs/BadJob2.php"/>
+            </fileset>
+        </phplint>
+    </target>
+
+    <target name="phpunit">
+        <if>
+            <not><isset property="paratest.processes"/></not>
+            <then>
+                <property name="paratest.processes" value="${paratest.defaultProcesses}"/>
+            </then>
+        </if>
+
+        <exec 
+            command="./vendor/bin/paratest --bootstrap=./tests/bootstrap.php --functional --processes=${paratest.processes} ./tests/unit/" 
+            passthru="true" 
+            checkreturn="true"
+        />
     </target>
 
     <target name="test">
-        <exec command="./vendor/bin/paratest --bootstrap=./tests/bootstrap.php --functional --processes=10 ./tests/unit/" passthru="true" checkreturn="true"/>
+        <phingcall target="lint"/>
+        <phingcall target="cs"/>
+        <phingcall target="phpunit"/>
     </target>
 
+    <target name="travis-test">
+        <property name="paratest.processes" value="10"/>
+
+        <phingcall target="lint"/>
+        <phingcall target="cs"/>
+        <phingcall target="phpunit"/>
+    </target>
 </project>

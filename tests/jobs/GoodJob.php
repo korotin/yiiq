@@ -12,7 +12,6 @@ namespace Yiiq\tests\jobs;
 
 class GoodJob extends \Yiiq\jobs\Base
 {
-
     public $file = 'goodjob';
     public $content = 'done';
 
@@ -21,11 +20,9 @@ class GoodJob extends \Yiiq\jobs\Base
         $path = \Yii::getPathOfAlias('application.runtime').DIRECTORY_SEPARATOR.$this->file;
         if (file_exists($path)) {
             $prepend = file_get_contents($path);
-        }
-        else {
+        } else {
             $prepend = '';
         }
         file_put_contents($path, $prepend.$this->content);
     }
-
 }

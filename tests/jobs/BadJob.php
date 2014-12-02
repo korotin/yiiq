@@ -12,10 +12,8 @@ namespace Yiiq\tests\jobs;
 
 class BadJob extends \Yiiq\jobs\Base
 {
-
     public function run()
     {
         test();
     }
-
 }

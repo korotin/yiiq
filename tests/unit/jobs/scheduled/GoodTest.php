@@ -32,8 +32,18 @@ class GoodTest extends Job
         $this->assertFalse(file_exists($goodAtPath));
         $this->assertFalse(file_exists($goodAfterPath));
         $ids = [];
-        $ids[] = \Yii::app()->yiiq->enqueueJobAt(time() + 2, '\Yiiq\tests\jobs\GoodJob', ['file' => $goodAtFile], $queue);
-        $ids[] = \Yii::app()->yiiq->enqueueJobAfter(2, '\Yiiq\tests\jobs\GoodJob', ['file' => $goodAfterFile], $queue);
+        $ids[] = \Yii::app()->yiiq->enqueueJobAt(
+            time() + 2,
+            '\Yiiq\tests\jobs\GoodJob',
+            ['file' => $goodAtFile],
+            $queue
+        );
+        $ids[] = \Yii::app()->yiiq->enqueueJobAfter(
+            2,
+            '\Yiiq\tests\jobs\GoodJob',
+            ['file' => $goodAfterFile],
+            $queue
+        );
 
         usleep(100000);
 

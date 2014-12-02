@@ -8,11 +8,10 @@ php:
     - 5.5
     - 5.4
 
-install:
-    - composer install
+install: composer install
 
 before_script: 
     - phpenv config-add ./tests/travis-php.ini
     - if [[ "$(phpenv version-name)" == "5.4" ]]; then pecl install proctitle-0.1.2; fi
 
-script: ./vendor/bin/phing test
+script: ./vendor/bin/phing travis-test

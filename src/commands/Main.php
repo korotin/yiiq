@@ -111,9 +111,9 @@ class Main extends Base
 
             if ($dead) {
                 if ($alive) {
-                    echo "Some dead processes (".implode(', ', $dead).") found! Run './yiic yiiq check' to remove them.\n";
-                }
-                else {
+                    echo "Some dead processes (".implode(', ', $dead).") found! "
+                        ."Run './yiic yiiq check' to remove them.\n";
+                } else {
                     echo "All processes (".implode(', ', $dead).") are dead. System is not working.\n";
                 }
                 $status = 1;

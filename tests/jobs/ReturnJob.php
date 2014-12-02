@@ -12,12 +12,10 @@ namespace Yiiq\tests\jobs;
 
 class ReturnJob extends \Yiiq\jobs\Base
 {
-    
     public $result;
 
     public function run()
     {
         return $this->result;
     }
-
 }
