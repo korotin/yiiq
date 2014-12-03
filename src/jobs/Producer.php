@@ -43,7 +43,7 @@ class Producer
     /**
      * Job class.
      *
-     * @var string.
+     * @var string
      */
     public $class       = null;
 
