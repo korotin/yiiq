@@ -19,12 +19,12 @@
     "require-dev": {
         "ext-xdebug": "*",
         "squizlabs/php_codesniffer": "dev-master",
-        "phpunit/phpunit": "~3.7",
+        "phpunit/phpunit": "~3",
         "phpunit/phpunit-story": "*",
         "phpunit/dbunit": "*",
         "phpunit/phpunit-selenium": "*",
         "phpunit/php-invoker": "*",
-        "phpunit/php-code-coverage": "3.0.*@dev",
+        "phpunit/php-code-coverage": "~2",
         "brianium/paratest": "dev-master",
         "phing/phing": "dev-master",
         "yiisoft/yii": "~1"

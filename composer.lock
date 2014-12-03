@@ -4,7 +4,7 @@
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "5afa8c0eced607f22228aefff92b0ebd",
+    "hash": "953219a3fb328cc63a8a851d6cbf9a72",
     "packages": [
         {
             "name": "codemix/yiiredis",
@@ -308,16 +308,16 @@
         },
         {
             "name": "phpunit/php-code-coverage",
-            "version": "dev-master",
+            "version": "2.0.13",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/php-code-coverage.git",
-                "reference": "d25cfe94974d26243a3c165efc0d2eb89eee06a6"
+                "reference": "0e7d2eec5554f869fa7a4ec2d21e4b37af943ea5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/d25cfe94974d26243a3c165efc0d2eb89eee06a6",
-                "reference": "d25cfe94974d26243a3c165efc0d2eb89eee06a6",
+                "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/0e7d2eec5554f869fa7a4ec2d21e4b37af943ea5",
+                "reference": "0e7d2eec5554f869fa7a4ec2d21e4b37af943ea5",
                 "shasum": ""
             },
             "require": {
@@ -330,7 +330,7 @@
             },
             "require-dev": {
                 "ext-xdebug": ">=2.1.4",
-                "phpunit/phpunit": "~4.3"
+                "phpunit/phpunit": "~4.1"
             },
             "suggest": {
                 "ext-dom": "*",
@@ -340,7 +340,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "3.0.x-dev"
+                    "dev-master": "2.0.x-dev"
                 }
             },
             "autoload": {
@@ -369,7 +369,7 @@
                 "testing",
                 "xunit"
             ],
-            "time": "2014-12-03 06:43:25"
+            "time": "2014-12-03 06:41:44"
         },
         {
             "name": "phpunit/php-file-iterator",
@@ -1401,7 +1401,6 @@
     "stability-flags": {
         "codemix/yiiredis": 20,
         "squizlabs/php_codesniffer": 20,
-        "phpunit/php-code-coverage": 20,
         "brianium/paratest": 20,
         "phing/phing": 20
     },
