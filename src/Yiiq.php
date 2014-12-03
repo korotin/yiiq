@@ -330,9 +330,9 @@ class Yiiq extends \CApplicationComponent
     /**
      * Save job data to redis.
      *
-     * @param  Yiiq\jobs\Data $jobData
-     * @param  boolean        $overwrite[optional] overwrite existing job, default is false
-     * @return mixed          id if job is saved or null
+     * @param  \Yiiq\jobs\Data $jobData
+     * @param  boolean         $overwrite[optional] overwrite existing job, default is false
+     * @return mixed           id if job is saved or null
      */
     protected function saveJobData(Data $jobData, $overwrite = false)
     {

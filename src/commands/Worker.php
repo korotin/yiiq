@@ -142,7 +142,7 @@ class Worker extends Base
     /**
      * Get child pid pool.
      *
-     * @return ARedisSet
+     * @return \ARedisSet
      */
     protected function getChildPool()
     {

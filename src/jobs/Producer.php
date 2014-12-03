@@ -90,8 +90,8 @@ class Producer
     /**
      * Put job in given queue.
      *
-     * @param  string          $queue
-     * @return YiiqJobProducer
+     * @param  string   $queue
+     * @return Producer
      */
     public function into($queue)
     {
@@ -103,8 +103,8 @@ class Producer
     /**
      * Set job arguments to following array.
      *
-     * @param  array           $args
-     * @return YiiqJobProducer
+     * @param  array    $args
+     * @return Producer
      */
     public function withArgs(array $args)
     {
@@ -116,8 +116,8 @@ class Producer
     /**
      * Set job id.
      *
-     * @param  string          $id
-     * @return YiiqJobProducer
+     * @param  string   $id
+     * @return Producer
      */
     public function withId($id)
     {
@@ -129,8 +129,8 @@ class Producer
     /**
      * Run job at given timestamp (converts job to scheduled).
      *
-     * @param  int             $timestmap
-     * @return YiiqJobProducer
+     * @param  int      $timestmap
+     * @return Producer
      */
     public function runAt($timestamp)
     {
@@ -143,8 +143,8 @@ class Producer
     /**
      * Run job after given interval (converts job to scheduled).
      *
-     * @param  int             $interval
-     * @return YiiqJobProducer
+     * @param  int      $interval
+     * @return Producer
      */
     public function runAfter($interval)
     {
@@ -157,8 +157,8 @@ class Producer
     /**
      * Run job each $interval seconds (converts job to repeatable).
      *
-     * @param  int             $interval
-     * @return YiiqJobProducer
+     * @param  int      $interval
+     * @return Producer
      */
     public function runEach($interval)
     {
