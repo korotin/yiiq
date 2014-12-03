@@ -11,7 +11,11 @@ php:
 install: composer install
 
 before_script: 
-    - phpenv config-add ./tests/travis-php.ini
+    - phpenv config-add ./test/travis-php.ini
     - if [[ "$(phpenv version-name)" == "5.4" ]]; then pecl install proctitle-0.1.2; fi
 
 script: ./vendor/bin/phing travis-test
+
+after_script:
+    - wget https://scrutinizer-ci.com/ocular.phar
+    - php ocular.phar code-coverage:upload --format=php-clover coverage.clover

@@ -14,7 +14,7 @@
 
     <target name="cs">
         <exec 
-            command="./vendor/bin/phpcs --ignore=./vendor/,./tests/jobs/BadJob2.php --report=full --standard=PSR2 -p ." 
+            command="./vendor/bin/phpcs --ignore=./vendor/,./test/jobs/BadJob2.php --report=full --standard=PSR2 -p ." 
             passthru="true" 
             checkreturn="true"
         />
@@ -52,13 +52,14 @@
         </if>
 
         <exec 
-            command="./vendor/bin/paratest --bootstrap=./test/bootstrap.php --functional --processes=${paratest.processes} --coverage-html=./test/report  ./test/unit/" 
+            command="./vendor/bin/paratest --bootstrap=./test/bootstrap.php --functional --processes=${paratest.processes} --coverage-clover=./test/report/coverage.clover --coverage-html=./test/report/  ./test/unit/" 
             passthru="true" 
             checkreturn="true"
         />
     </target>
 
     <target name="test">
+        <phingcall target="clearreport"/>
         <phingcall target="lint"/>
         <phingcall target="cs"/>
         <phingcall target="phpunit"/>
@@ -67,6 +68,7 @@
     <target name="travis-test">
         <property name="paratest.processes" value="20"/>
 
+        <phingcall target="clearreport"/>
         <phingcall target="lint"/>
         <phingcall target="cs"/>
         <phingcall target="phpunit"/>
