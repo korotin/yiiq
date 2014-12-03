@@ -44,7 +44,7 @@ class Worker extends Base
     /**
      * Worker queues.
      *
-     * @var array
+     * @var string[]
      */
     protected $queues;
 
@@ -104,8 +104,8 @@ class Worker extends Base
      * Process title is changing by cli_set_process_title (PHP >= 5.5) or
      * setproctitle (if proctitle extension is available).
      *
-     * @param string           $title
-     * @param string[optional] $queue
+     * @param string      $title
+     * @param string|null $queue
      */
     protected function setProcessTitle($title, $queue = null)
     {
@@ -451,8 +451,8 @@ class Worker extends Base
      * Run worker for given queues and with given count of
      * max child threads.
      *
-     * @param array $queues
-     * @param int   $threads
+     * @param string[] $queues
+     * @param integer  $threads
      */
     public function actionRun(array $queue, $threads)
     {

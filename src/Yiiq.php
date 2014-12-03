@@ -313,8 +313,8 @@ class Yiiq extends \CApplicationComponent
     /**
      * Get job data by id.
      *
-     * @param  string $id
-     * @return mixed  \Yiiq\jobs\Data or null
+     * @param  string    $id
+     * @return Data|null
      */
     protected function getJobData($id)
     {
@@ -608,11 +608,11 @@ class Yiiq extends \CApplicationComponent
     /**
      * Create a simple job in given queue.
      *
-     * @param  string           $class job class extended from \Yiiq\jobs\Base
-     * @param  array[optional]  $args  values for job object properties
-     * @param  string[optional] $queue \Yiiq\Yiiq::DEFAULT_QUEUE by default
-     * @param  string[optional] $id    globally unique job id
-     * @return mixed            job id or null if job with same id extists
+     * @param  string      $class job class extended from \Yiiq\jobs\Base
+     * @param  array       $args  (optional) values for job object properties
+     * @param  string      $queue (optional) \Yiiq\Yiiq::DEFAULT_QUEUE by default
+     * @param  string      $id    (optional) globally unique job id
+     * @return string|null job id or null if job with same id extists
      */
     public function enqueueJob($class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
@@ -633,12 +633,12 @@ class Yiiq extends \CApplicationComponent
     /**
      * Create a job in given queue wich will be executed at given time.
      *
-     * @param  int              $timestamp timestamp to execute job at
-     * @param  string           $class     job class extended from \Yiiq\jobs\Base
-     * @param  array[optional]  $args      values for job object properties
-     * @param  string[optional] $queue     \Yiiq\Yiiq::DEFAULT_QUEUE by default
-     * @param  string[optional] $id        globally unique job id
-     * @return mixed            job id or null if job with same id extists
+     * @param  integer     $timestamp timestamp to execute job at
+     * @param  string      $class     job class extended from \Yiiq\jobs\Base
+     * @param  array       $args      (optional) values for job object properties
+     * @param  string      $queue     (optional) \Yiiq\Yiiq::DEFAULT_QUEUE by default
+     * @param  string      $id        (optional) globally unique job id
+     * @return string|null job id or null if job with same id extists
      */
     public function enqueueJobAt($timestamp, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
@@ -660,12 +660,12 @@ class Yiiq extends \CApplicationComponent
     /**
      * Create a job in given queue wich will be executed after specified interval.
      *
-     * @param  int              $interval time to wait before execution in seconds
-     * @param  string           $class    job class extended from \Yiiq\jobs\Base
-     * @param  array[optional]  $args     values for job object properties
-     * @param  string[optional] $queue    \Yiiq\Yiiq::DEFAULT_QUEUE by default
-     * @param  string[optional] $id       globally unique job id
-     * @return mixed            job id or null if job with same id extists
+     * @param  integer     $interval time to wait before execution in seconds
+     * @param  string      $class    job class extended from \Yiiq\jobs\Base
+     * @param  array       $args     (optional) values for job object properties
+     * @param  string      $queue    (optional) \Yiiq\Yiiq::DEFAULT_QUEUE by default
+     * @param  string      $id       (optional) globally unique job id
+     * @return string|null job id or null if job with same id extists
      */
     public function enqueueJobAfter($interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
@@ -683,8 +683,8 @@ class Yiiq extends \CApplicationComponent
      * @param  string  $id
      * @param  integer $interval
      * @param  string  $class
-     * @param  array   $args[optional]
-     * @param  string  $queue[optional]
+     * @param  array   $args
+     * @param  string  $queue
      * @return string
      */
     public function enqueueRepeatableJob($id, $interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE)
@@ -795,8 +795,8 @@ class Yiiq extends \CApplicationComponent
     /**
      * Pop simple job id from given queue.
      *
-     * @param  string $queue
-     * @return mixed  YiiqJobData or null
+     * @param  string    $queue
+     * @return Data|null
      */
     protected function popSimpleJob($queue)
     {
@@ -811,8 +811,8 @@ class Yiiq extends \CApplicationComponent
      * Pop scheduled job id from given queue.
      * FIXME this action is not atomic
      *
-     * @param  string $queue
-     * @return mixed  YiiqJobData or null
+     * @param  string    $queue
+     * @return Data|null
      */
     protected function popScheduledJob($queue)
     {
@@ -834,8 +834,8 @@ class Yiiq extends \CApplicationComponent
     /**
      * Pop repeatable job id from given queue.
      *
-     * @param  string $queue
-     * @return mixed  YiiqJobData or null
+     * @param  string    $queue
+     * @return Data|null
      */
     protected function popRepeatableJob($queue)
     {
@@ -857,8 +857,8 @@ class Yiiq extends \CApplicationComponent
     /**
      * Pop schedlued or simple job id from given queue.
      *
-     * @param  string[optional] $queue Yiiq::DEFAULT_QUEUE by default
-     * @return array
+     * @param  string    $queue (optional) Yiiq::DEFAULT_QUEUE by default
+     * @return Data|null
      */
     public function popJob($queue = self::DEFAULT_QUEUE)
     {
@@ -880,8 +880,8 @@ class Yiiq extends \CApplicationComponent
      * Mark job as started.
      * Job id will be added to executing pool for current queue.
      *
-     * @param \Yiiq\jobs\Data $jobData
-     * @param int             $pid     forked worker pid
+     * @param Data $jobData
+     * @param int  $pid     forked worker pid
      */
     public function markAsStarted(Data $jobData, $pid)
     {
@@ -893,8 +893,8 @@ class Yiiq extends \CApplicationComponent
      * Jod id will be removed from executing pool and job data will be deleted
      * for non-repeatable jobs.
      *
-     * @param \Yiiq\jobs\Data $jobData
-     * @param mixed           $result
+     * @param Data  $jobData
+     * @param mixed $result
      */
     public function markAsCompleted(Data $jobData, $result)
     {
@@ -913,7 +913,7 @@ class Yiiq extends \CApplicationComponent
      * Remove dead process pids from redis set.
      *
      * @param  \ARedisSet $pool
-     * @return int        amount of dead pids
+     * @return integer    amount of dead pids
      */
     public function checkPidPool(\ARedisSet $pool)
     {
@@ -933,8 +933,8 @@ class Yiiq extends \CApplicationComponent
     /**
      * Check for dead children.
      *
-     * @param  bool[optional] $log
-     * @return int            dead children count
+     * @param  bool $log
+     * @return int  dead children count
      */
     protected function checkForDeadChildren($log)
     {
@@ -960,8 +960,8 @@ class Yiiq extends \CApplicationComponent
     /**
      * Check for dead workers.
      *
-     * @param  bool[optional] $log
-     * @return int            dead workers count
+     * @param  bool $log
+     * @return int  dead workers count
      */
     protected function checkForDeadWorkers($log)
     {
@@ -979,7 +979,8 @@ class Yiiq extends \CApplicationComponent
     /**
      * Check for stopped jobs.
      *
-     * @return array [stopped jobs, restored jobs]
+     * @param  bool      $log
+     * @return integer[] [stopped jobs, restored jobs]
      */
     protected function checkForStoppedJobs($log)
     {
