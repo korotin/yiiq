@@ -12,7 +12,7 @@ namespace Yiiq\test\cases;
 
 abstract class Job extends Base
 {
-    const TIME_FOR_JOB  = 1700000;
+    const TIME_FOR_JOB  = 1800000;
 
     public function startParametersProvider()
     {
