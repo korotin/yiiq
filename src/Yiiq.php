@@ -736,7 +736,7 @@ class Yiiq extends \CApplicationComponent
                     $producer->queue,
                     $producer->id
                 );
-                break;
+                // no break
 
             case self::TYPE_SCHEDULED:
                 if ($producer->timestamp) {
@@ -756,7 +756,7 @@ class Yiiq extends \CApplicationComponent
                         $producer->id
                     );
                 }
-                break;
+                // no break
 
             case self::TYPE_REPEATABLE:
                 return $this->enqueueRepeatableJob(
@@ -766,7 +766,7 @@ class Yiiq extends \CApplicationComponent
                     $producer->args,
                     $producer->queue
                 );
-                break;
+                // no break
         }
     }
 
