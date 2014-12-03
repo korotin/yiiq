@@ -4,7 +4,7 @@
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "f95ff9b5d016b0413cbe414df66eb0a6",
+    "hash": "5afa8c0eced607f22228aefff92b0ebd",
     "packages": [
         {
             "name": "codemix/yiiredis",
@@ -164,12 +164,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/phingofficial/phing.git",
-                "reference": "eb1b9fc02c72fd724922641bc2ecce16415593aa"
+                "reference": "393edeffa8a85d43636ce0c9b4deb1ff9ac60a5c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phingofficial/phing/zipball/eb1b9fc02c72fd724922641bc2ecce16415593aa",
-                "reference": "eb1b9fc02c72fd724922641bc2ecce16415593aa",
+                "url": "https://api.github.com/repos/phingofficial/phing/zipball/393edeffa8a85d43636ce0c9b4deb1ff9ac60a5c",
+                "reference": "393edeffa8a85d43636ce0c9b4deb1ff9ac60a5c",
                 "shasum": ""
             },
             "require": {
@@ -245,7 +245,7 @@
                 "task",
                 "tool"
             ],
-            "time": "2014-11-27 10:22:25"
+            "time": "2014-12-03 09:18:46"
         },
         {
             "name": "phpunit/dbunit",
@@ -312,12 +312,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/php-code-coverage.git",
-                "reference": "b8781bdc6379749fd3f3f76aa5109957f46bc9e6"
+                "reference": "d25cfe94974d26243a3c165efc0d2eb89eee06a6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/b8781bdc6379749fd3f3f76aa5109957f46bc9e6",
-                "reference": "b8781bdc6379749fd3f3f76aa5109957f46bc9e6",
+                "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/d25cfe94974d26243a3c165efc0d2eb89eee06a6",
+                "reference": "d25cfe94974d26243a3c165efc0d2eb89eee06a6",
                 "shasum": ""
             },
             "require": {
@@ -369,7 +369,7 @@
                 "testing",
                 "xunit"
             ],
-            "time": "2014-12-02 13:16:21"
+            "time": "2014-12-03 06:43:25"
         },
         {
             "name": "phpunit/php-file-iterator",
