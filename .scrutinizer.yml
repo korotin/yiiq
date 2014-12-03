@@ -2,6 +2,9 @@ filter:
     excluded_paths:
         - vendor/*
         - test/jobs/*
+    paths:
+        - src/*
+        - test/*
 
 tools:
     external_code_coverage:
