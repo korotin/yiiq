@@ -24,7 +24,6 @@
         "phpunit/dbunit": "*",
         "phpunit/phpunit-selenium": "*",
         "phpunit/php-invoker": "*",
-        "phpunit/php-code-coverage": "~2",
         "brianium/paratest": "dev-master",
         "phing/phing": "dev-master",
         "yiisoft/yii": "~1"
