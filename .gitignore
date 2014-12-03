@@ -1,3 +1,4 @@
 vendor
-tests/runtime/*
+test/runtime/*
+test/report/*
 *.sublime-*

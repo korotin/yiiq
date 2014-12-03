@@ -385,8 +385,10 @@ class Worker extends Base
      */
     protected function loop()
     {
-        $offset = null;
-        $count  = count($this->queues);
+        $offset     = null;
+        $count      = count($this->queues);
+        $queue      = null;
+        $jobData    = null;
 
         while (!$this->shutdown) {
             // Iterate over free threads.

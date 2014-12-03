@@ -9,7 +9,7 @@
         }
     ],
     "autoload": {
-        "psr-4": {"Yiiq\\tests\\": "tests/", "Yiiq\\": "src/"}
+        "psr-4": {"Yiiq\\test\\": "test/", "Yiiq\\": "src/"}
     },
     "require": {
         "php": ">=5.4",
@@ -17,12 +17,14 @@
         "codemix/yiiredis":"dev-master"
     },
     "require-dev": {
+        "ext-xdebug": "*",
         "squizlabs/php_codesniffer": "dev-master",
         "phpunit/phpunit": "~3.7",
         "phpunit/phpunit-story": "*",
         "phpunit/dbunit": "*",
         "phpunit/phpunit-selenium": "*",
         "phpunit/php-invoker": "*",
+        "phpunit/php-code-coverage": "dev-master",
         "brianium/paratest": "dev-master",
         "phing/phing": "dev-master",
         "yiisoft/yii": "~1"

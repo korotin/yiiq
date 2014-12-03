@@ -731,7 +731,7 @@ class Yiiq extends \CApplicationComponent
      */
     public function enqueueJobByProducer(Producer $producer)
     {
-        switch ($jobProducer->type) {
+        switch ($producer->type) {
             case self::TYPE_SIMPLE:
                 return $this->enqueueJob(
                     $producer->class,

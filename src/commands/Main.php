@@ -3,7 +3,7 @@
  * Yiiq - background job queue manager for Yii
  *
  * This file contains Yiiq main command class.
- * 
+ *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  * @package yiiq.commands
  */
@@ -11,21 +11,20 @@
 namespace Yiiq\commands;
 
 use Yiiq\Yiiq;
-use Yiiq\commands\Base;
 
 /**
  * Yiiq main command class.
- * 
+ *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
 class Main extends Base
 {
     /**
      * Run worker for given queue.
-     * 
-     * @param  array[optional] $queue  \Yiiq\Yiiq::DEFAULT_QUEUE by default
-     * @param  int[optional] $threads  \Yiiq\Yiiq::DEFAULT_THREADS by default
-     * @param  string[optional] $log   error log file name stored at application.runtime 
+     *
+     * @param array[optional]  $queue   \Yiiq\Yiiq::DEFAULT_QUEUE by default
+     * @param int[optional]    $threads \Yiiq\Yiiq::DEFAULT_THREADS by default
+     * @param string[optional] $log     error log file name stored at application.runtime
      */
     public function actionStart(array $queue = null, $threads = null, $log = null)
     {
@@ -133,6 +132,6 @@ class Main extends Base
      */
     public function actionCheck()
     {
-        \Yii::app()->getComponent('yiiq')->check();
+        \Yii::app()->yiiq->check();
     }
 }
