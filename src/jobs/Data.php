@@ -3,7 +3,7 @@
  * Yiiq - background job queue manager for Yii
  *
  * This file contains Yiiq job data class.
- * 
+ *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  * @package yiiq.jobs
  */
@@ -12,12 +12,11 @@ namespace Yiiq\jobs;
 
 /**
  * Yiiq job data class.
- * 
+ *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
 class Data
 {
-
     public $created = null;
 
     public $id = null;
@@ -28,6 +27,7 @@ class Data
     public $timestamp = null;
     public $interval = null;
     public $faults = 0;
+    public $lastFailed = null;
 
     public function __construct($data = null)
     {
@@ -45,7 +45,7 @@ class Data
 
     public function __toString()
     {
-        $keys = array(
+        $keys = [
             'created',
             'id',
             'queue',
@@ -55,7 +55,8 @@ class Data
             'timestamp',
             'interval',
             'faults',
-        );
+            'lastFailed',
+        ];
 
         $data = array();
         foreach ($keys as $k) {

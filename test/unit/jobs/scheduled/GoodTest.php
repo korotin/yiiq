@@ -20,7 +20,6 @@ class GoodTest extends Job
     public function testScheduledJob($queue, $threads)
     {
         $procTitle  = $this->getBaseProcessTitle();
-        $logPath    = $this->getLogPath();
         $goodAtFile = 'goodjob_at_'.TEST_TOKEN;
         $goodAtPath = $this->getRuntimePath().'/'.$goodAtFile;
         $goodAfterFile = 'goodjob_after_'.TEST_TOKEN;

@@ -72,7 +72,6 @@ class CommandTest extends Base
         $this->assertContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
 
         $output = $this->execYiic('yiiq status');
-        $matches = null;
         $this->assertRegExp(
             '/All processes \(\d+\) are alive\. Everything looks good\./',
             $output

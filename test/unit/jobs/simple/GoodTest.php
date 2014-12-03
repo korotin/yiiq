@@ -19,7 +19,6 @@ class GoodTest extends Job
      */
     public function testSimpleJob($queue, $threads)
     {
-        $procTitle  = $this->getBaseProcessTitle();
         $logPath    = $this->getLogPath();
         $goodFile   = 'goodjob_'.TEST_TOKEN;
         $goodPath   = $this->getRuntimePath().'/'.$goodFile;

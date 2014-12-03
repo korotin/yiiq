@@ -46,7 +46,7 @@ abstract class Base extends \CTestCase
         $lines = array();
         exec('TEST_TOKEN='.TEST_TOKEN.' '.$cmd, $lines, $return);
 
-        return implode("\n", $lines);
+        return $lines ? implode("\n", $lines) : null;
     }
 
     protected function execYiic($cmd, &$return = null)

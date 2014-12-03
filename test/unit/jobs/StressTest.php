@@ -19,7 +19,6 @@ class StressTest extends Job
         $procTitle  = $this->getBaseProcessTitle();
         $logPath    = $this->getLogPath();
         $goodFile   = 'goodjob_'.TEST_TOKEN;
-        $goodPath   = $this->getRuntimePath().'/'.$goodFile;
 
         $queue      = 'default_'.TEST_TOKEN;
         $threads    = 20;
