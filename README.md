@@ -1,6 +1,6 @@
 # Yiiq
 
-[![Build Status](https://travis-ci.org/herroffizier/yiiq.svg?branch=master)](https://travis-ci.org/herroffizier/yiiq) [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/herroffizier/yiiq/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/herroffizier/yiiq/?branch=master) [![Code Coverage](https://scrutinizer-ci.com/g/herroffizier/yiiq/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/herroffizier/yiiq/?branch=master)
+[![Build Status](https://travis-ci.org/herroffizier/yiiq.svg?branch=master)](https://travis-ci.org/herroffizier/yiiq) [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/herroffizier/yiiq/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/herroffizier/yiiq/?branch=master) [![Code Coverage](https://scrutinizer-ci.com/g/herroffizier/yiiq/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/herroffizier/yiiq/?branch=master) [![Code Climate](https://codeclimate.com/github/herroffizier/yiiq/badges/gpa.svg)](https://codeclimate.com/github/herroffizier/yiiq)
 
 **Yiiq** is a powerful [Redis](http://redis.io/)-backed multithreaded background job manager for Yii Framework designed with stability and simplicity in mind.
 

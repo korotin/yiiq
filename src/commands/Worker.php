@@ -72,7 +72,7 @@ class Worker extends Base
     /**
      * Child pid to job id array.
      *
-     * @var array
+     * @var string[]
      */
     protected $pidToJob = [];
 
@@ -84,6 +84,11 @@ class Worker extends Base
      */
     protected $shutdown = false;
 
+    /**
+     * Whether signal handled already.
+     *
+     * @var boolean
+     */
     protected $signalHandled = false;
 
     /**
@@ -212,6 +217,11 @@ class Worker extends Base
         $this->waitForThread(WNOHANG | WUNTRACED);
     }
 
+    /**
+     * Signal handlers array.
+     *
+     * @return string[]
+     */
     protected function getSignalHandlers()
     {
         return [

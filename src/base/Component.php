@@ -5,7 +5,7 @@
  * This file contains Yiiq's component class.
  *
  * @author  Martin Stolz <herr.offizier@gmail.com>
- * @package yiiq
+ * @package yiiq.base
  */
 
 namespace Yiiq\base;

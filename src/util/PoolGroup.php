@@ -5,7 +5,7 @@
  * This file contains pool group class.
  *
  * @author  Martin Stolz <herr.offizier@gmail.com>
- * @package yiiq
+ * @package yiiq.util
  */
 
 namespace Yiiq\util;
