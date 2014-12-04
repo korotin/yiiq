@@ -50,7 +50,7 @@ class PoolGroup extends Component implements \ArrayAccess
 
     public function offsetExists($offset)
     {
-        return true;// isset($this->pools[$offset]);
+        return true;
     }
 
     public function offsetGet($offset)

@@ -89,7 +89,7 @@ class Worker extends Base
     /**
      * Stringify queues array.
      *
-     * @param  array  $queues
+     * @param  string[] $queues
      * @return string
      */
     protected function stringifyQueues(array $queues)

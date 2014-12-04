@@ -19,6 +19,9 @@ use Yiiq\jobs\Producer;
  * Yiiq component class.
  *
  * @author  Martin Stolz <herr.offizier@gmail.com>
+ *
+ * @property-read Health $health
+ * @property-read PoolCollection $pools
  */
 class Yiiq extends \CApplicationComponent
 {
@@ -138,7 +141,7 @@ class Yiiq extends \CApplicationComponent
     /**
      * Get pool collection component.
      *
-     * @return Health
+     * @return PoolCollection
      */
     public function getPools()
     {
@@ -491,7 +494,7 @@ class Yiiq extends \CApplicationComponent
      * @param  string      $class job class extended from \Yiiq\jobs\Base
      * @param  array       $args  (optional) values for job object properties
      * @param  string      $queue (optional) \Yiiq\Yiiq::DEFAULT_QUEUE by default
-     * @param  string      $id    (optional) globally unique job id
+     * @param  string|null $id    (optional) globally unique job id
      * @return string|null job id or null if job with same id extists
      */
     public function enqueueJob($class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
@@ -517,7 +520,7 @@ class Yiiq extends \CApplicationComponent
      * @param  string      $class     job class extended from \Yiiq\jobs\Base
      * @param  array       $args      (optional) values for job object properties
      * @param  string      $queue     (optional) \Yiiq\Yiiq::DEFAULT_QUEUE by default
-     * @param  string      $id        (optional) globally unique job id
+     * @param  string|null $id        (optional) globally unique job id
      * @return string|null job id or null if job with same id extists
      */
     public function enqueueJobAt($timestamp, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
@@ -544,7 +547,7 @@ class Yiiq extends \CApplicationComponent
      * @param  string      $class    job class extended from \Yiiq\jobs\Base
      * @param  array       $args     (optional) values for job object properties
      * @param  string      $queue    (optional) \Yiiq\Yiiq::DEFAULT_QUEUE by default
-     * @param  string      $id       (optional) globally unique job id
+     * @param  string|null $id       (optional) globally unique job id
      * @return string|null job id or null if job with same id extists
      */
     public function enqueueJobAfter($interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
@@ -654,7 +657,7 @@ class Yiiq extends \CApplicationComponent
      * Pop job from sorted set.
      *
      * @param  \ARedisSortedSet $set
-     * @return Data
+     * @return Data|null
      */
     protected function popFromSortedSet(\ARedisSortedSet $set)
     {
