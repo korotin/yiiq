@@ -724,7 +724,7 @@ class Yiiq extends \CApplicationComponent
      * Returns job id.
      *
      * @param  \Yiiq\jobs\Producer $producer
-     * @return string
+     * @return string|null
      */
     public function enqueueJobByProducer(Producer $producer)
     {

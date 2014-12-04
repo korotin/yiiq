@@ -174,7 +174,7 @@ class Producer
      * Must be called after everything was set.
      * Returns job id.
      *
-     * @return string
+     * @return string|null
      */
     public function enqueue()
     {
