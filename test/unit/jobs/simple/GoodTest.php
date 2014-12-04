@@ -36,7 +36,7 @@ class GoodTest extends Job
         $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
         $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
 
-        $this->assertTrue(\Yii::app()->yiiq->check(false));
+        $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
     }
 
@@ -71,7 +71,7 @@ class GoodTest extends Job
             $this->assertFalse(\Yii::app()->yiiq->isExecuting($ids[$i]));
         }
 
-        $this->assertTrue(\Yii::app()->yiiq->check(false));
+        $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
     }
 
@@ -108,7 +108,7 @@ class GoodTest extends Job
             $this->assertFalse(\Yii::app()->yiiq->isExecuting($ids[$i]));
         }
 
-        $this->assertTrue(\Yii::app()->yiiq->check(false));
+        $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
     }
 }

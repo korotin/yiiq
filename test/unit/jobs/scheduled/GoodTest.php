@@ -65,7 +65,7 @@ class GoodTest extends Job
             $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
         }
 
-        $this->assertTrue(\Yii::app()->yiiq->check(false));
+        $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
     }
 }

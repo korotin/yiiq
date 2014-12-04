@@ -38,7 +38,7 @@ class BadTest extends Job
         $this->assertFalse(\Yii::app()->yiiq->isExecuting('badjob'));
         $this->assertTrue(\Yii::app()->yiiq->isFailed('badjob'));
 
-        $this->assertTrue(\Yii::app()->yiiq->check(false));
+        $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
     }
 }

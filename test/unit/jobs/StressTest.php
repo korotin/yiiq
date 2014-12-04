@@ -77,7 +77,7 @@ class StressTest extends Job
         }
 
         $this->assertContains($procTitle, $this->exec('ps aux'));
-        $this->assertTrue(\Yii::app()->yiiq->check(false));
+        $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
     }
 }

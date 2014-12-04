@@ -132,6 +132,7 @@ class Worker extends Base
     /**
      * Return queue-to-pid key name.
      *
+     * @param  string $queue
      * @return string
      */
     protected function getWorkerPidName($queue)
@@ -147,7 +148,7 @@ class Worker extends Base
     protected function getChildPool()
     {
         if ($this->childPool === null) {
-            $this->childPool = new \ARedisSet(\Yii::app()->yiiq->prefix.':children:'.$this->pid);
+            $this->childPool = \Yii::app()->yiiq->pools->children[$this->pid];
         }
 
         return $this->childPool;
@@ -161,7 +162,7 @@ class Worker extends Base
         foreach ($this->queues as $queue) {
             if (
                 ($oldPid = \Yii::app()->redis->get($this->getWorkerPidName($queue)))
-                && (\Yii::app()->yiiq->isPidAlive($oldPid))
+                && (\Yii::app()->yiiq->health->isPidAlive($oldPid))
             ) {
                 \Yii::trace('Worker for queue '.$queue.' already running.');
                 exit(1);
@@ -178,7 +179,7 @@ class Worker extends Base
             \Yii::app()->redis->set($this->getWorkerPidName($queue), $this->pid);
         }
 
-        \Yii::app()->yiiq->pidPool->add($this->pid);
+        \Yii::app()->yiiq->pools->pids->add($this->pid);
     }
 
     /**
@@ -190,7 +191,7 @@ class Worker extends Base
             \Yii::app()->redis->del($this->getWorkerPidName($queue));
         }
 
-        \Yii::app()->yiiq->pidPool->remove($this->pid);
+        \Yii::app()->yiiq->pools->pids->remove($this->pid);
     }
 
     /**
@@ -285,7 +286,7 @@ class Worker extends Base
      * Wait for any child to exit.
      * If $options = WNOHANG returns immediately if no child process exited.
      *
-     * @param integer[optional] $options
+     * @param integer $options (optional)
      */
     protected function waitForThread($options = 0)
     {
@@ -331,8 +332,8 @@ class Worker extends Base
      * Job will be executed in fork and method will return
      * after the fork get initialized.
      *
-     * @param string          $queue
-     * @param \Yiiq\jobs\Data $job
+     * @param string $queue
+     * @param Data   $jobData
      */
     protected function runJob($queue, Data $jobData)
     {
@@ -451,7 +452,7 @@ class Worker extends Base
      * Run worker for given queues and with given count of
      * max child threads.
      *
-     * @param string[] $queues
+     * @param string[] $queue
      * @param integer  $threads
      */
     public function actionRun(array $queue, $threads)

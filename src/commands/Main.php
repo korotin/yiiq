@@ -73,13 +73,13 @@ class Main extends Base
      */
     public function actionStop()
     {
-        \Yii::app()->yiiq->check();
-        $pids = \Yii::app()->yiiq->pidPool->getData();
+        \Yii::app()->yiiq->health->check();
+        $pids = \Yii::app()->yiiq->pools->pids->getData();
         if ($pids) {
             foreach ($pids as $pid) {
                 echo "Killing $pid... ";
                 posix_kill($pid, SIGTERM);
-                while (\Yii::app()->yiiq->isPidAlive($pid)) {
+                while (\Yii::app()->yiiq->health->isPidAlive($pid)) {
                     usleep(100000);
                 }
                 echo "Done.\n";
@@ -95,12 +95,12 @@ class Main extends Base
     public function actionStatus()
     {
         $status = 0;
-        $pids = \Yii::app()->yiiq->pidPool->getData();
+        $pids = \Yii::app()->yiiq->pools->pids->getData();
         if ($pids) {
             $dead = [];
             $alive = [];
             foreach ($pids as $pid) {
-                $isAlive = \Yii::app()->yiiq->isPidAlive($pid);
+                $isAlive = \Yii::app()->yiiq->health->isPidAlive($pid);
                 if ($isAlive) {
                     $alive[] = $pid;
                 } else {
@@ -132,6 +132,6 @@ class Main extends Base
      */
     public function actionCheck()
     {
-        \Yii::app()->yiiq->check();
+        \Yii::app()->yiiq->health->check();
     }
 }

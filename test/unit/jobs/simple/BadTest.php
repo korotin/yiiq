@@ -45,7 +45,7 @@ class BadTest extends Job
         $this->assertEquals($size, filesize($logPath));
         $this->assertTrue(file_exists($goodPath));
 
-        $this->assertTrue(\Yii::app()->yiiq->check(false));
+        $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
     }
 
@@ -89,7 +89,7 @@ class BadTest extends Job
         $this->assertContains($procTitle, $this->exec('ps aux'));
         $this->assertTrue(file_exists($goodPath));
 
-        $this->assertTrue(\Yii::app()->yiiq->check(false));
+        $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
     }
 }

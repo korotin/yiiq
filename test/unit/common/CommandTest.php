@@ -19,6 +19,7 @@ class CommandTest extends Base
         $this->assertNotContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
         $this->startYiiq();
         usleep(self::TIME_TO_START);
+
         $this->assertContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
         $this->stopYiiq();
         $this->assertNotContains($this->getBaseProcessTitle(), $this->exec('ps aux'));

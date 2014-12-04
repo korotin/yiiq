@@ -58,7 +58,7 @@ class GoodTest extends Job
 
         $this->assertFalse(file_exists($goodPath));
 
-        $this->assertTrue(\Yii::app()->yiiq->check(false));
+        $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
     }
 }

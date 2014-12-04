@@ -10,6 +10,8 @@
 
 namespace Yiiq;
 
+use Yiiq\util\Health;
+use Yiiq\util\PoolCollection;
 use Yiiq\jobs\Data;
 use Yiiq\jobs\Producer;
 
@@ -74,53 +76,18 @@ class Yiiq extends \CApplicationComponent
     public $titleTemplate   = 'Yiiq [{name}] {type}@{queue}: {message}';
 
     /**
-     * Pid pool.
+     * Health checker.
      *
-     * @var \ARedisSet
+     * @var Health
      */
-    protected $pids         = null;
+    protected $health       = null;
 
     /**
-     * Executing job pool.
+     * Pool collection.
      *
-     * @var \ARedisSortedSet
+     * @var PoolCollection
      */
-    protected $executing    = null;
-
-    /**
-     * Completed job pool.
-     *
-     * @var \ARedisSet
-     */
-    protected $completed    = null;
-
-    /**
-     * Failed job pool.
-     *
-     * @var \ARedisSet
-     */
-    protected $failed       = null;
-
-    /**
-     * Array of simple job pools.
-     *
-     * @var \ARedisSet[]
-     */
-    protected $simplePool   = [];
-
-    /**
-     * Array of scheduled job pools.
-     *
-     * @var \ARedisSortedSet[]
-     */
-    protected $scheduledPool = [];
-
-    /**
-     * Array of repeatable job pools.
-     *
-     * @var \ARedisSortedSet[]
-     */
-    protected $repeatablePool= [];
+    protected $pools       = null;
 
     /**
      * Get redis job key for given id.
@@ -155,127 +122,40 @@ class Yiiq extends \CApplicationComponent
     }
 
     /**
-     * Is process with given pid alive?
+     * Get health checker component.
      *
-     * @param  int     $pid
-     * @return boolean
+     * @return Health
      */
-    public function isPidAlive($pid)
+    public function getHealth()
     {
-        return posix_kill($pid, 0);
-    }
-
-    /**
-     * Get abstract entity.
-     *
-     * @param  string                $type  pool type
-     * @param  string                $class YiiRedis entity class
-     * @return \ARedisIterableEntity
-     */
-    protected function getSingleEntity($type, $class)
-    {
-        if ($this->$type === null) {
-            $this->$type = new $class($this->prefix.':'.$type);
+        if ($this->health === null) {
+            $this->health = new Health($this);
         }
 
-        return $this->$type;
+        return $this->health;
     }
 
     /**
-     * Get abstract entity by queue.
+     * Get pool collection component.
      *
-     * @param  string                $type  pool type
-     * @param  string                $class YiiRedis entity class
-     * @param  string                $queue pool queue
-     * @return \ARedisIterableEntity
+     * @return Health
      */
-    protected function getEntityByQueue($type, $class, $queue)
+    public function getPools()
     {
-        if (!$queue) {
-            $queue = self::DEFAULT_QUEUE;
+        if ($this->pools === null) {
+            $this->pools = new PoolCollection($this);
+            $this->getPools()->
+                addPool('pids', '\ARedisSet')->
+                addPool('executing', '\ARedisSortedSet')->
+                addPool('completed', '\ARedisSet')->
+                addPool('failed', '\ARedisSet')->
+                addPoolGroup('children', '\ARedisSet')->
+                addPoolGroup(self::TYPE_SIMPLE, '\ARedisSet')->
+                addPoolGroup(self::TYPE_SCHEDULED, '\ARedisSortedSet')->
+                addPoolGroup(self::TYPE_REPEATABLE, '\ARedisSortedSet');
         }
 
-        $prop = $type.'Pool';
-
-        if (!isset($this->{$prop}[$queue])) {
-            $this->{$prop}[$queue] =
-                new $class($this->prefix.':queue:'.$queue.':'.$type);
-        }
-
-        return $this->{$prop}[$queue];
-    }
-
-    /**
-     * Get redis set with worker pids.
-     *
-     * @return \ARedisSet
-     */
-    public function getPidPool()
-    {
-        return $this->getSingleEntity('pids', '\ARedisSet');
-    }
-
-    /**
-     * Get executing job pool for given queue.
-     *
-     * @return \ARedisSortedSet
-     */
-    public function getExecutingPool()
-    {
-        return $this->getSingleEntity('executing', '\ARedisSortedSet');
-    }
-
-    /**
-     * Get completed job pool.
-     *
-     * @return \ARedisSet
-     */
-    protected function getCompletedPool()
-    {
-        return $this->getSingleEntity('completed', '\ARedisSet');
-    }
-
-    /**
-     * Get failed job pool.
-     *
-     * @return \ARedisSet
-     */
-    protected function getFailedPool()
-    {
-        return $this->getSingleEntity('failed', '\ARedisSet');
-    }
-
-    /**
-     * Get simple job pool for given queue.
-     *
-     * @param  string[optional] $queue Yiiq::DEFAULT_QUEUE by default
-     * @return \ARedisSet
-     */
-    protected function getSimplePool($queue = self::DEFAULT_QUEUE)
-    {
-        return $this->getEntityByQueue(self::TYPE_SIMPLE, '\ARedisSet', $queue);
-    }
-
-    /**
-     * Get scheduled job pool for given queue.
-     *
-     * @param  string           $queue
-     * @return \ARedisSortedSet
-     */
-    protected function getScheduledPool($queue = self::DEFAULT_QUEUE)
-    {
-        return $this->getEntityByQueue(self::TYPE_SCHEDULED, '\ARedisSortedSet', $queue);
-    }
-
-    /**
-     * Get repeatable job pool for given queue.
-     *
-     * @param  string           $queue
-     * @return \ARedisSortedSet
-     */
-    protected function getRepeatablePool($queue = self::DEFAULT_QUEUE)
-    {
-        return $this->getEntityByQueue(self::TYPE_REPEATABLE, '\ARedisSortedSet', $queue);
+        return $this->pools;
     }
 
     /**
@@ -330,9 +210,9 @@ class Yiiq extends \CApplicationComponent
     /**
      * Save job data to redis.
      *
-     * @param  \Yiiq\jobs\Data $jobData
-     * @param  boolean         $overwrite[optional] overwrite existing job, default is false
-     * @return mixed           id if job is saved or null
+     * @param  Data        $jobData
+     * @param  boolean     $overwrite (optional) overwrite existing job, default is false
+     * @return string|null id if job is saved or null
      */
     protected function saveJobData(Data $jobData, $overwrite = false)
     {
@@ -433,7 +313,7 @@ class Yiiq extends \CApplicationComponent
     public function isExecuting($id)
     {
         return \Yii::app()->redis->getClient()->zrank(
-            $this->getExecutingPool()->name,
+            $this->getPools()->executing->name,
             $id
         ) !== false;
     }
@@ -447,7 +327,7 @@ class Yiiq extends \CApplicationComponent
     public function isCompleted($id)
     {
         return (bool) \Yii::app()->redis->getClient()->sismember(
-            $this->getCompletedPool()->name,
+            $this->getPools()->completed->name,
             $id
         );
     }
@@ -461,7 +341,7 @@ class Yiiq extends \CApplicationComponent
     public function isFailed($id)
     {
         return (bool) \Yii::app()->redis->getClient()->sismember(
-            $this->getFailedPool()->name,
+            $this->getPools()->failed->name,
             $id
         );
     }
@@ -474,7 +354,7 @@ class Yiiq extends \CApplicationComponent
      */
     protected function deleteSimpleJob($queue, $id)
     {
-        $this->getSimplePool($queue)->remove($id);
+        $this->getPools()->simple[$queue]->remove($id);
     }
 
     /**
@@ -485,7 +365,7 @@ class Yiiq extends \CApplicationComponent
      */
     protected function deleteScheduledJob($queue, $id)
     {
-        $this->getScheduledPool($queue)->remove($id);
+        $this->getPools()->scheduled[$queue]->remove($id);
     }
 
     /**
@@ -496,7 +376,7 @@ class Yiiq extends \CApplicationComponent
      */
     protected function deleteRepeatableJob($queue, $id)
     {
-        $this->getRepeatablePool($queue)->remove($id);
+        $this->getPools()->repeatable[$queue]->remove($id);
         $this->deleteJobInterval($id);
     }
 
@@ -505,8 +385,8 @@ class Yiiq extends \CApplicationComponent
      * By default ($withData = true) job data will be also
      * deleted.
      *
-     * @param string         $id
-     * @param bool[optional] $withData
+     * @param string $id
+     * @param bool   $withData (optional)
      */
     public function deleteJob($id, $withData = true)
     {
@@ -554,7 +434,7 @@ class Yiiq extends \CApplicationComponent
         $jobData->faults++;
         $jobData->lastFailed = time();
 
-        $this->getExecutingPool()->remove($id);
+        $this->getPools()->executing->remove($id);
 
         if (
             $this->faultIntervals
@@ -562,7 +442,7 @@ class Yiiq extends \CApplicationComponent
         ) {
             $this->saveJobData($jobData, true);
             $this->deleteJob($id, false);
-            $this->getFailedPool()->add($id);
+            $this->getPools()->failed->add($id);
 
             return false;
         }
@@ -576,11 +456,11 @@ class Yiiq extends \CApplicationComponent
                 // no break
 
             case self::TYPE_SCHEDULED:
-                $this->getScheduledPool($jobData->queue)->add($jobData->id, $timestamp);
+                $this->getPools()->scheduled[$jobData->queue]->add($jobData->id, $timestamp);
                 break;
 
             case self::TYPE_REPEATABLE:
-                $this->getRepeatablePool($jobData->queue)->add($jobData->id, $timestamp);
+                $this->getPools()->repeatable[$jobData->queue]->add($jobData->id, $timestamp);
                 break;
         }
 
@@ -624,7 +504,7 @@ class Yiiq extends \CApplicationComponent
         $jobData->args = $args;
 
         if ($id = $this->saveJobData($jobData)) {
-            $this->getSimplePool($queue)->add($id);
+            $this->getPools()->simple[$queue]->add($id);
         }
 
         return $id;
@@ -651,7 +531,7 @@ class Yiiq extends \CApplicationComponent
         $jobData->timestamp = $timestamp;
 
         if ($id = $this->saveJobData($jobData)) {
-            $this->getScheduledPool($queue)->add($id, $timestamp);
+            $this->getPools()->scheduled[$queue]->add($id, $timestamp);
         }
 
         return $id;
@@ -701,7 +581,7 @@ class Yiiq extends \CApplicationComponent
 
         $this->saveJobData($jobData, true);
         $this->setJobInterval($id, $interval);
-        $this->getRepeatablePool($queue)->add($id, time());
+        $this->getPools()->repeatable[$queue]->add($id, time());
 
         return $id;
     }
@@ -709,8 +589,8 @@ class Yiiq extends \CApplicationComponent
     /**
      * Create a job via job producer.
      *
-     * @param  string              $class
-     * @return \Yiiq\jobs\Producer
+     * @param  string   $class
+     * @return Producer
      */
     public function createJob($class)
     {
@@ -723,7 +603,7 @@ class Yiiq extends \CApplicationComponent
      * Called by \Yiiq\jobs\Producer.
      * Returns job id.
      *
-     * @param  \Yiiq\jobs\Producer $producer
+     * @param  Producer    $producer
      * @return string|null
      */
     public function enqueueJobByProducer(Producer $producer)
@@ -800,7 +680,7 @@ class Yiiq extends \CApplicationComponent
      */
     protected function popSimpleJob($queue)
     {
-        if (!($id = $this->getSimplePool($queue)->pop())) {
+        if (!($id = $this->getPools()->simple[$queue]->pop())) {
             return;
         }
 
@@ -809,14 +689,13 @@ class Yiiq extends \CApplicationComponent
 
     /**
      * Pop scheduled job id from given queue.
-     * FIXME this action is not atomic
      *
      * @param  string    $queue
      * @return Data|null
      */
     protected function popScheduledJob($queue)
     {
-        $schedule = $this->getScheduledPool($queue);
+        $schedule = $this->getPools()->scheduled[$queue];
 
         $data = $this->popFromSortedSet($schedule);
         if (!$data) {
@@ -839,7 +718,7 @@ class Yiiq extends \CApplicationComponent
      */
     protected function popRepeatableJob($queue)
     {
-        $repeatable = $this->getRepeatablePool($queue);
+        $repeatable = $this->getPools()->repeatable[$queue];
 
         $data = $this->popFromSortedSet($repeatable);
         if (!$data) {
@@ -885,7 +764,7 @@ class Yiiq extends \CApplicationComponent
      */
     public function markAsStarted(Data $jobData, $pid)
     {
-        $this->getExecutingPool()->add($jobData->id, $pid);
+        $this->getPools()->executing->add($jobData->id, $pid);
     }
 
     /**
@@ -898,137 +777,14 @@ class Yiiq extends \CApplicationComponent
      */
     public function markAsCompleted(Data $jobData, $result)
     {
-        $this->getExecutingPool()->remove($jobData->id);
+        $this->getPools()->executing->remove($jobData->id);
         if ($jobData->type === self::TYPE_REPEATABLE) {
             return;
         }
 
-        $this->getCompletedPool()->add($jobData->id);
+        $this->getPools()->completed->add($jobData->id);
         $this->deleteJob($jobData->id);
 
         $this->saveJobResult($jobData->id, $result);
-    }
-
-    /**
-     * Remove dead process pids from redis set.
-     *
-     * @param  \ARedisSet $pool
-     * @return integer    amount of dead pids
-     */
-    public function checkPidPool(\ARedisSet $pool)
-    {
-        $removed = 0;
-        $pids = $pool->getData(true);
-        foreach ($pids as $pid) {
-            if ($this->isPidAlive($pid)) {
-                continue;
-            }
-            $pool->remove($pid);
-            $removed++;
-        }
-
-        return $removed;
-    }
-
-    /**
-     * Check for dead children.
-     *
-     * @param  bool $log
-     * @return int  dead children count
-     */
-    protected function checkForDeadChildren($log)
-    {
-        if ($log) {
-            echo "Checking for dead children... ";
-        }
-
-        $deadChildren = 0;
-        $keys = \Yii::app()->redis->keys($this->prefix.':children:*');
-        foreach ($keys as $key) {
-            if (\Yii::app()->redis->prefix) {
-                $key = mb_substr($key, mb_strlen(\Yii::app()->redis->prefix));
-            }
-            $deadChildren += $this->checkPidPool(new \ARedisSet($key));
-        }
-        if ($log) {
-            echo "$deadChildren found.\n";
-        }
-
-        return $deadChildren;
-    }
-
-    /**
-     * Check for dead workers.
-     *
-     * @param  bool $log
-     * @return int  dead workers count
-     */
-    protected function checkForDeadWorkers($log)
-    {
-        if ($log) {
-            echo "Checking for dead workers... ";
-        }
-        $deadWorkers = $this->checkPidPool($this->getPidPool());
-        if ($log) {
-            echo "$deadWorkers found.\n";
-        }
-
-        return $deadWorkers;
-    }
-
-    /**
-     * Check for stopped jobs.
-     *
-     * @param  bool      $log
-     * @return integer[] [stopped jobs, restored jobs]
-     */
-    protected function checkForStoppedJobs($log)
-    {
-        if ($log) {
-            echo "Checking for stopped jobs... ";
-        }
-
-        $pool = $this->getExecutingPool();
-
-        $stopped = 0;
-        $restored = 0;
-        $jobs = $pool->getData(true);
-        foreach ($jobs as $id => $pid) {
-            if ($this->isPidAlive($pid)) {
-                continue;
-            }
-            $stopped++;
-            if ($this->restoreJob($id)) {
-                $restored++;
-            }
-        }
-
-        if ($log) {
-            echo "$stopped found, $restored restored.\n";
-        }
-
-        return [$stopped, $restored];
-    }
-
-    /**
-     * Check redis db consistency.
-     *
-     * Remove dead worker pids from pid pool, remove lost jobs
-     * and restore stopped jobs.
-     *
-     * @param  bool[optional] $log
-     * @return bool           true if no errors found
-     */
-    public function check($log = true)
-    {
-        $deadChildren = $this->checkForDeadChildren($log);
-        $deadWorkers = $this->checkForDeadWorkers($log);
-        list($stoppedJobs, $restoredJobs) = $this->checkForStoppedJobs($log);
-
-        return
-            $deadChildren === 0
-            && $deadWorkers === 0
-            && $stoppedJobs === 0
-            && $restoredJobs === 0;
     }
 }

@@ -11,21 +11,15 @@
 namespace Yiiq\jobs;
 
 use Yiiq\Yiiq;
+use Yiiq\base\Component;
 
 /**
  * Yiiq job producer class.
  *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
-class Producer
+class Producer extends Component
 {
-    /**
-     * Yiiq component instance.
-     *
-     * @var \Yiiq\Yiiq
-     */
-    protected $owner    = null;
-
     /**
      * Job type.
      *
@@ -83,7 +77,7 @@ class Producer
      */
     public function __construct(Yiiq $owner, $class)
     {
-        $this->owner = $owner;
+        parent::__construct($owner);
         $this->class = $class;
     }
 
@@ -129,7 +123,7 @@ class Producer
     /**
      * Run job at given timestamp (converts job to scheduled).
      *
-     * @param  int      $timestmap
+     * @param  int      $timestamp
      * @return Producer
      */
     public function runAt($timestamp)
