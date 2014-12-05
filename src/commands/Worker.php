@@ -11,7 +11,7 @@
 namespace Yiiq\commands;
 
 use Yiiq\Yiiq;
-use Yiiq\jobs\Data;
+use Yiiq\jobs\Job;
 
 /**
  * Yiiq worker command class.
@@ -316,13 +316,14 @@ class Worker extends Base
                 return;
             }
 
-            $jobId = $this->pidToJob[$childPid];
+            $job = $this->pidToJob[$childPid];
             unset($this->pidToJob[$childPid]);
 
             // If status is non-zero or job is still marked as executing,
             // child process failed.
-            if ($status || \Yii::app()->yiiq->isExecuting($jobId)) {
-                \Yii::app()->yiiq->restoreJob($jobId);
+
+            if ($status || $job->isExecuting()) {
+                \Yii::app()->yiiq->restore($job->id);
             }
         } while ($childPid > 0);
     }
@@ -343,9 +344,9 @@ class Worker extends Base
      * after the fork get initialized.
      *
      * @param string $queue
-     * @param Data   $jobData
+     * @param Job    $job
      */
-    protected function runJob($queue, Data $jobData)
+    protected function runJob($queue, Job $job)
     {
         // Try to fork process.
         $childPid = pcntl_fork();
@@ -356,13 +357,13 @@ class Worker extends Base
 
         if ($childPid > 0) {
             // If we're in parent process, add child pid to pool and return.
-            $this->pidToJob[$childPid] = $jobData->id;
+            $this->pidToJob[$childPid] = $job;
             $this->getChildPool()->add($childPid);
 
             return;
         } elseif ($childPid < 0) {
             // If we're failed to fork process, restore job and exit.
-            \Yii::app()->restoreJob($jobData->id);
+            \Yii::app()->yiiq->restore($job->id);
 
             return;
         }
@@ -373,20 +374,19 @@ class Worker extends Base
         $this->processType = 'job';
         $this->setProcessTitle('initializing', $queue);
 
-        \Yii::trace('Starting job '.$jobData->queue.':'.$jobData->id.' ('.$jobData->class.')...');
-        $this->setProcessTitle('executing '.$jobData->id.' ('.$jobData->class.')', $jobData->queue);
+        \Yii::trace('Starting job '.$job->queue.':'.$job->id.' ('.$job->class.')...');
+        $this->setProcessTitle('executing '.$job->id.' ('.$job->class.')', $job->queue);
 
-        \Yii::app()->yiiq->markAsStarted($jobData, $childPid);
+        $job->markAsStarted($childPid);
         \Yii::app()->yiiq->onBeforeJob();
 
-        $class = $jobData->class;
-        $job = new $class($jobData->queue, $jobData->type, $jobData->id);
-        $returnData = $job->execute($jobData->args);
+        $payload = $job->payload;
+        $result = $payload->execute($job->args);
 
-        \Yii::app()->yiiq->markAsCompleted($jobData, $returnData);
+        $job->markAsCompleted($result);
         \Yii::app()->yiiq->onAfterJob();
 
-        \Yii::trace('Job '.$jobData->queue.':'.$jobData->id.' done.');
+        \Yii::trace('Job '.$job->queue.':'.$job->id.' done.');
 
         exit(0);
     }
@@ -399,7 +399,7 @@ class Worker extends Base
         $offset     = null;
         $count      = count($this->queues);
         $queue      = null;
-        $jobData    = null;
+        $job    = null;
 
         while (!$this->shutdown) {
             // Iterate over free threads.
@@ -417,19 +417,19 @@ class Worker extends Base
                 // queue etc.
                 for ($index = 0; $index < $count; $index++) {
                     $queue = $this->queues[($index + $offset) % $count];
-                    if ($jobData = \Yii::app()->yiiq->popJob($queue)) {
+                    if ($job = \Yii::app()->yiiq->popJob($queue)) {
                         $offset = ($index + 1) % $count;
                         break;
                     }
                 }
 
                 // No job was found - exit loop.
-                if (!$jobData) {
+                if (!$job) {
                     break;
                 }
 
                 // Execute found job.
-                $this->runJob($queue, $jobData);
+                $this->runJob($queue, $job);
             }
 
             if ($this->shutdown) {

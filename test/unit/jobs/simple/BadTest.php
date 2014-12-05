@@ -28,19 +28,19 @@ class BadTest extends Job
         $this->startYiiq($queue, $threads);
 
         $this->assertFalse(file_exists($goodPath));
-        $id = \Yii::app()->yiiq->enqueueJob($badClass, [], $queue);
+        $job = \Yii::app()->yiiq->enqueue($badClass, [], $queue);
         $this->waitForJobs($threads, 1, true);
 
         $size = filesize($logPath);
         $this->assertGreaterThan(0, $size);
         $this->assertContains($procTitle, $this->exec('ps aux'));
 
-        $this->assertFalse(\Yii::app()->yiiq->isCompleted($id));
-        $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
-        $this->assertTrue(\Yii::app()->yiiq->isFailed($id));
+        $this->assertFalse($job->isCompleted());
+        $this->assertFalse($job->isExecuting());
+        $this->assertTrue($job->isFailed());
 
         $this->assertFalse(file_exists($goodPath));
-        \Yii::app()->yiiq->enqueueJob('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile], $queue);
+        \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile], $queue);
         $this->waitForJobs($threads, 1);
         $this->assertEquals($size, filesize($logPath));
         $this->assertTrue(file_exists($goodPath));
@@ -63,9 +63,9 @@ class BadTest extends Job
         $this->startYiiq($queue, $threads);
 
         $this->assertFalse(file_exists($goodPath));
-        $ids = [];
+        $jobs = [];
         for ($i = 0; $i < 10; $i++) {
-            $ids[] = \Yii::app()->yiiq->enqueueJob($badClass, [], $queue);
+            $jobs[] = \Yii::app()->yiiq->enqueue($badClass, [], $queue);
         }
         $this->waitForJobs($threads, 10, true);
 
@@ -73,15 +73,15 @@ class BadTest extends Job
         $this->assertGreaterThan(0, $size);
         $this->assertContains($procTitle, $this->exec('ps aux'));
 
-        foreach ($ids as $id) {
-            $this->assertFalse(\Yii::app()->yiiq->isCompleted($id));
-            $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
-            $this->assertTrue(\Yii::app()->yiiq->isFailed($id));
+        foreach ($jobs as $job) {
+            $this->assertFalse($job->isCompleted());
+            $this->assertFalse($job->isExecuting());
+            $this->assertTrue($job->isFailed());
         }
 
         $this->assertContains($procTitle, $this->exec('ps aux'));
         $this->assertFalse(file_exists($goodPath));
-        \Yii::app()->yiiq->enqueueJob('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile], $queue);
+        \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile], $queue);
 
         $this->waitForJobs($threads, 1);
 

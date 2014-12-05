@@ -10,7 +10,7 @@
 
 namespace Yiiq\test\jobs;
 
-class ReturnJob extends \Yiiq\jobs\Base
+class ReturnJob extends \Yiiq\jobs\Payload
 {
     public $result;
 

@@ -28,9 +28,9 @@ class StressTest extends Job
         $results = [];
         for ($i = 0; $i < 200; $i++) {
             $result = rand();
-            $id = \Yii::app()->yiiq->enqueueJob('\Yiiq\test\jobs\ReturnJob', ['result' => $result], $queue);
+            $job = \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\ReturnJob', ['result' => $result], $queue);
 
-            $results[$id] = $result;
+            $results[$job->id] = $result;
         }
 
         $this->waitForJobs($threads, 100);
@@ -47,9 +47,9 @@ class StressTest extends Job
 
         for ($i = 0; $i < 200; $i++) {
             $result = rand();
-            $id = \Yii::app()->yiiq->enqueueJobAfter(0, '\Yiiq\test\jobs\ReturnJob', ['result' => $result], $queue);
+            $job = \Yii::app()->yiiq->enqueueAfter(0, '\Yiiq\test\jobs\ReturnJob', ['result' => $result], $queue);
 
-            $results[$id] = $result;
+            $results[$job->id] = $result;
         }
 
         $this->waitForJobs($threads, 100);
@@ -69,11 +69,13 @@ class StressTest extends Job
         $size = filesize($logPath);
         $this->assertEquals(0, $size);
 
+        echo file_get_contents($logPath);
         foreach ($results as $id => $result) {
-            $this->assertTrue(\Yii::app()->yiiq->isCompleted($id));
-            $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
-            $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
-            $this->assertEquals($result, \Yii::app()->yiiq->getJobResult($id));
+            $job = \Yii::app()->yiiq->get($id);
+            $this->assertTrue($job->isCompleted());
+            $this->assertFalse($job->isFailed());
+            $this->assertFalse($job->isExecuting());
+            $this->assertEquals($result, $job->getResult());
         }
 
         $this->assertContains($procTitle, $this->exec('ps aux'));

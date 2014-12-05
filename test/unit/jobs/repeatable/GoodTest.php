@@ -27,7 +27,7 @@ class GoodTest extends Job
         $this->assertNotContains($procTitle, $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
-        \Yii::app()->yiiq->enqueueRepeatableJob(
+        $job = \Yii::app()->yiiq->enqueueRepeatable(
             'goodjob',
             1,
             '\Yiiq\test\jobs\GoodJob',
@@ -43,12 +43,12 @@ class GoodTest extends Job
         $this->assertGreaterThanOrEqual(4, $contentSize);
         $this->assertLessThanOrEqual(6, $contentSize);
 
-        $this->assertTrue(\Yii::app()->yiiq->hasJob('goodjob'));
-        $this->assertFalse(\Yii::app()->yiiq->isCompleted('goodjob'));
-        $this->assertFalse(\Yii::app()->yiiq->isFailed('goodjob'));
+        $this->assertTrue(\Yii::app()->yiiq->exists('goodjob'));
+        $this->assertFalse($job->isCompleted());
+        $this->assertFalse($job->isFailed());
 
-        \Yii::app()->yiiq->deleteJob('goodjob');
-        $this->assertFalse(\Yii::app()->yiiq->hasJob('goodjob'));
+        \Yii::app()->yiiq->delete('goodjob');
+        $this->assertFalse(\Yii::app()->yiiq->exists('goodjob'));
 
         usleep(200000);
 

@@ -25,7 +25,7 @@ class BadTest extends Job
         $this->assertNotContains($procTitle, $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
-        \Yii::app()->yiiq->enqueueRepeatableJob('badjob', 1, $badClass, [], $queue);
+        $job = \Yii::app()->yiiq->enqueueRepeatable('badjob', 1, $badClass, [], $queue);
 
         $this->waitForJobs($threads, 1, true);
 
@@ -33,10 +33,10 @@ class BadTest extends Job
         $this->assertGreaterThan(0, $size);
         $this->assertContains($procTitle, $this->exec('ps aux'));
 
-        $this->assertTrue(\Yii::app()->yiiq->hasJob('badjob'));
-        $this->assertFalse(\Yii::app()->yiiq->isCompleted('badjob'));
-        $this->assertFalse(\Yii::app()->yiiq->isExecuting('badjob'));
-        $this->assertTrue(\Yii::app()->yiiq->isFailed('badjob'));
+        $this->assertTrue(\Yii::app()->yiiq->exists('badjob'));
+        $this->assertFalse($job->isCompleted());
+        $this->assertFalse($job->isExecuting());
+        $this->assertTrue($job->isFailed());
 
         $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();

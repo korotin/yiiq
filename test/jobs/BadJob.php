@@ -10,7 +10,7 @@
 
 namespace Yiiq\test\jobs;
 
-class BadJob extends \Yiiq\jobs\Base
+class BadJob extends \Yiiq\jobs\Payload
 {
     public function run()
     {

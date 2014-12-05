@@ -30,14 +30,14 @@ class GoodTest extends Job
 
         $this->assertFalse(file_exists($goodAtPath));
         $this->assertFalse(file_exists($goodAfterPath));
-        $ids = [];
-        $ids[] = \Yii::app()->yiiq->enqueueJobAt(
+        $jobs = [];
+        $jobs[] = \Yii::app()->yiiq->enqueueAt(
             time() + 2,
             '\Yiiq\test\jobs\GoodJob',
             ['file' => $goodAtFile],
             $queue
         );
-        $ids[] = \Yii::app()->yiiq->enqueueJobAfter(
+        $jobs[] = \Yii::app()->yiiq->enqueueAfter(
             2,
             '\Yiiq\test\jobs\GoodJob',
             ['file' => $goodAfterFile],
@@ -46,11 +46,11 @@ class GoodTest extends Job
 
         usleep(100000);
 
-        foreach ($ids as $id) {
-            $this->assertTrue(\Yii::app()->yiiq->hasJob($id));
-            $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
-            $this->assertFalse(\Yii::app()->yiiq->isCompleted($id));
-            $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
+        foreach ($jobs as $job) {
+            $this->assertTrue(\Yii::app()->yiiq->exists($job->id));
+            $this->assertFalse($job->isExecuting());
+            $this->assertFalse($job->isCompleted());
+            $this->assertFalse($job->isFailed());
         }
 
         usleep(self::TIME_FOR_JOB + 2000000);
@@ -58,11 +58,11 @@ class GoodTest extends Job
 
         $this->assertTrue(file_exists($goodAtPath));
         $this->assertTrue(file_exists($goodAfterPath));
-        foreach ($ids as $id) {
-            $this->assertFalse(\Yii::app()->yiiq->hasJob($id));
-            $this->assertTrue(\Yii::app()->yiiq->isCompleted($id));
-            $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
-            $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
+        foreach ($jobs as $job) {
+            $this->assertFalse(\Yii::app()->yiiq->exists($job->id));
+            $this->assertTrue($job->isCompleted());
+            $this->assertFalse($job->isExecuting());
+            $this->assertFalse($job->isFailed());
         }
 
         $this->assertTrue(\Yii::app()->yiiq->health->check(false));

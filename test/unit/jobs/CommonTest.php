@@ -22,19 +22,19 @@ class CommonTest extends Job
         $this->assertNotContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
-        $id = \Yii::app()->yiiq->enqueueJob('\Yiiq\test\jobs\WaitJob', ['sleep' => 2], $queue);
+        $job = \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\WaitJob', ['sleep' => 2], $queue);
 
         usleep(1500000);
 
-        $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
-        $this->assertFalse(\Yii::app()->yiiq->isCompleted($id));
-        $this->assertTrue(\Yii::app()->yiiq->isExecuting($id));
+        $this->assertFalse($job->isFailed());
+        $this->assertFalse($job->isCompleted());
+        $this->assertTrue($job->isExecuting());
 
         usleep(2500000);
 
-        $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
-        $this->assertTrue(\Yii::app()->yiiq->isCompleted($id));
-        $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
+        $this->assertFalse($job->isFailed());
+        $this->assertTrue($job->isCompleted());
+        $this->assertFalse($job->isExecuting());
 
         $this->stopYiiq();
     }
@@ -48,18 +48,18 @@ class CommonTest extends Job
         $this->startYiiq($queue, $threads);
 
         $result = rand();
-        $id = \Yii::app()->yiiq->enqueueJob('\Yiiq\test\jobs\ReturnJob', ['result' => $result], $queue);
+        $job = \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\ReturnJob', ['result' => $result], $queue);
 
         $this->waitForJobs($threads, 1);
 
         $size = filesize($this->getLogPath());
         $this->assertEquals(0, $size);
-        $this->assertFalse(\Yii::app()->yiiq->isFailed($id));
-        $this->assertTrue(\Yii::app()->yiiq->isCompleted($id));
-        $this->assertFalse(\Yii::app()->yiiq->isExecuting($id));
-        $this->assertEquals($result, \Yii::app()->yiiq->getJobResult($id));
-        $this->assertEquals($result, \Yii::app()->yiiq->getJobResult($id, true));
-        $this->assertNull(\Yii::app()->yiiq->getJobResult($id));
+        $this->assertFalse($job->isFailed());
+        $this->assertTrue($job->isCompleted());
+        $this->assertFalse($job->isExecuting());
+        $this->assertEquals($result, $job->getResult());
+        $this->assertEquals($result, $job->getResult(true));
+        $this->assertNull($job->getResult());
 
         $this->stopYiiq();
     }

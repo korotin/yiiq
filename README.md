@@ -6,7 +6,7 @@
 
 To run a job just wrap it in class and type: 
 ```php
-Yii::app()->yiiq->enqueueJob('MyJob');
+Yii::app()->yiiq->enqueue('MyJob');
 ```
 And it's done!
 
@@ -99,10 +99,10 @@ If daemon is not running refer to ```application.log``` and ```yiiq.log``` (both
 
 ### Creating jobs
 
-To create a job you should extend ```\Yiiq\jobs\Base``` class and implement it's ```run()``` method:
+To create a job you should extend ```\Yiiq\jobs\Payload``` class and implement it's ```run()``` method:
 
 ```php
-class YiiqDummyJob extends \Yiiq\jobs\Base
+class YiiqDummyJob extends \Yiiq\jobs\Payload
 {
     /**
      * Time to wait before exit.
@@ -135,13 +135,13 @@ To add a simple job you may use one of following calls. As you already know, thi
 
 ```php
 // Add YiiqDummyJob with default arguments to default queue.
-Yii::app()->yiiq->enqueueJob('YiiqDummyJob');
+Yii::app()->yiiq->enqueue('YiiqDummyJob');
 
 // Add YiiqDummyJob with customized arguments to default queue.
-Yii::app()->yiiq->enqueueJob('YiiqDummyJob', ['sleep' => 5]);
+Yii::app()->yiiq->enqueue('YiiqDummyJob', ['sleep' => 5]);
 
 // Add YiiqDummyJob with customized arguments to 'custom' queue.
-Yii::app()->yiiq->enqueueJob('YiiqDummyJob', ['sleep' => 5], 'custom');
+Yii::app()->yiiq->enqueue('YiiqDummyJob', ['sleep' => 5], 'custom');
 ```
 
 #### Scheduled job
@@ -150,7 +150,7 @@ To schedule a job at certain time, you must specify time or interval:
 
 ```php
 // Run job at certain time.
-Yii::app()->yiiq->enqueueJobAt(time() + 60, 'YiiqDummyJob');
+Yii::app()->yiiq->enqueueAt(time() + 60, 'YiiqDummyJob');
 
 // Run job after 60 seconds. In fact exactly the same as above.
 Yii::app()->yiiq->enqueueJobAfter(60, 'YiiqDummyJob');
@@ -162,6 +162,6 @@ To create a repeatable job, you may use following code:
 
 ```php
 // Run job with id 'myJob' each 300 seconds.
-Yii::app()->yiiq->enqueueRepeatableJob('myJob', 300, 'YiiqDummyJob');
+Yii::app()->yiiq->enqueueRepeatable('myJob', 300, 'YiiqDummyJob');
 ```
 Note that repeatable job cannot return any data back to **Yiiq**.

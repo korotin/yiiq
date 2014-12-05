@@ -2,7 +2,7 @@
 /**
  * Yiiq - background job queue manager for Yii
  *
- * This file contains Yiiq base job class.
+ * This file contains payload class.
  *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  * @package yiiq.jobs
@@ -11,12 +11,12 @@
 namespace Yiiq\jobs;
 
 /**
- * Yiiq base job class.
+ * Payload class.
  * All jobs must inherit this class.
  *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
-abstract class Base
+abstract class Payload
 {
     /**
      * Queue name.

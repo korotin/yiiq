@@ -10,7 +10,7 @@
 
 namespace Yiiq\test\jobs;
 
-class WaitJob extends \Yiiq\jobs\Base
+class WaitJob extends \Yiiq\jobs\Payload
 {
     public $sleep;
 

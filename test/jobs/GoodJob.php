@@ -10,7 +10,7 @@
 
 namespace Yiiq\test\jobs;
 
-class GoodJob extends \Yiiq\jobs\Base
+class GoodJob extends \Yiiq\jobs\Payload
 {
     public $file = 'goodjob';
     public $content = 'done';
