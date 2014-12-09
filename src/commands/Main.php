@@ -23,7 +23,7 @@ class Main extends Base
      * Run worker for given queue.
      *
      * @param string[]|null $queue   \Yiiq\Yiiq::DEFAULT_QUEUE by default
-     * @param intteger|null $threads \Yiiq\Yiiq::DEFAULT_THREADS by default
+     * @param integer|null  $threads \Yiiq\Yiiq::DEFAULT_THREADS by default
      * @param string|null   $log     error log file name stored at application.runtime
      */
     public function actionStart(array $queue = null, $threads = null, $log = null)
