@@ -94,22 +94,6 @@ class Yiiq extends \CApplicationComponent
     protected $pools       = null;
 
     /**
-     * Event triggered in forked process before executing job.
-     */
-    public function onBeforeJob()
-    {
-        $this->raiseEvent('onBeforeJob', new \CEvent($this));
-    }
-
-    /**
-     * Event triggered in forked process after executing job.
-     */
-    public function onAfterJob()
-    {
-        $this->raiseEvent('onAfterJob', new \CEvent($this));
-    }
-
-    /**
      * Get health checker component.
      *
      * @return Health

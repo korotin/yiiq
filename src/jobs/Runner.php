@@ -67,8 +67,6 @@ class Runner extends Component
             'executing '.$job->metadata->id.' ('.$job->metadata->class.')'
         );
 
-        \Yii::app()->yiiq->onBeforeJob();
-
         $job->status->markAsStarted($childPid);
 
         $payload = $job->payload;
@@ -81,8 +79,6 @@ class Runner extends Component
             $job->result->save($result);
             $job->status->markAsCompleted();
         }
-
-        \Yii::app()->yiiq->onAfterJob();
 
         \Yii::trace('Job '.$job->metadata->queue.':'.$job->metadata->id.' done.');
 
