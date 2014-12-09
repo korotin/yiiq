@@ -28,8 +28,6 @@ class Main extends Base
      */
     public function actionStart(array $queue = null, $threads = null, $log = null)
     {
-        \Yii::app()->getComponent('yiiq');
-
         // Create array of unique queue names.
         // Split each --queue value by comma and then combine all values
         // into single-dimension array.
@@ -39,7 +37,7 @@ class Main extends Base
         }
         $queues = call_user_func_array('array_merge', array_merge($queues));
         $queues = array_unique($queues);
-        $stringifiedQueues = implode(', ', $queues);
+        asort($queues);
 
         // Set threads value.
         $threads = abs((int) $threads) ?: Yiiq::DEFAULT_THREADS;
@@ -63,7 +61,7 @@ class Main extends Base
         }
         $command .= '--threads='.$threads.'" > '.escapeshellarg($log).' 2>&1 &';
         $return = null;
-        echo "Starting worker for $stringifiedQueues ($threads threads)... ";
+        echo "Starting worker for ".implode(', ', $queues)." ($threads threads)... ";
         exec($command, $return);
         echo "Done.\n";
     }
