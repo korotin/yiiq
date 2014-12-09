@@ -25,6 +25,10 @@ class PoolCollection extends Component
      */
     protected $pools = [];
 
+    /**
+     * @param string $type
+     * @param string $class
+     */
     public function addPool($type, $class)
     {
         $this->pools[$type] = new $class($this->owner->prefix.':'.$type);
@@ -32,6 +36,10 @@ class PoolCollection extends Component
         return $this;
     }
 
+    /**
+     * @param string $type
+     * @param string $class
+     */
     public function addPoolGroup($type, $class)
     {
         $this->pools[$type] = new PoolGroup($this->owner, $type, $class);

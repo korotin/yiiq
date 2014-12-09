@@ -40,7 +40,6 @@ class Status extends JobComponent
     /**
      * Is job completed successfully.
      *
-     * @param  string  $id
      * @return boolean
      */
     public function getIsCompleted()
@@ -54,7 +53,6 @@ class Status extends JobComponent
     /**
      * Is job failed.
      *
-     * @param  string  $id
      * @return boolean
      */
     public function getIsFailed()
@@ -80,7 +78,6 @@ class Status extends JobComponent
      * Mark job as stopped.
      * Jod id will be removed from executing pool.
      *
-     * @param mixed $result
      */
     public function markAsStopped()
     {
@@ -91,7 +88,6 @@ class Status extends JobComponent
      * Mark job as completed.
      * Jod id will be removed from executing pool and added to completed pool.
      *
-     * @param mixed $result
      */
     public function markAsCompleted()
     {

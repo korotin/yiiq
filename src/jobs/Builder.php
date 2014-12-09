@@ -25,6 +25,9 @@ class Builder extends JobComponent
      */
     protected $metadata = null;
 
+    /**
+     * @param string $id
+     */
     public function __construct(Yiiq $owner, $id)
     {
         parent::__construct($owner, $id);

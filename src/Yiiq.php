@@ -152,7 +152,7 @@ class Yiiq extends \CApplicationComponent
      * setproctitle (if proctitle extension is available).
      *
      * @param string          $type
-     * @param string|string[] $queue
+     * @param string $queue
      * @param string          $title
      */
     public function setProcessTitle($type, $queue, $title)
