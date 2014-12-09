@@ -54,7 +54,6 @@ class Result extends JobComponent
     /**
      * Get job result.
      *
-     * @param  string  $id
      * @param  boolean $clear delete result from redis
      * @return mixed
      */
@@ -73,7 +72,6 @@ class Result extends JobComponent
     /**
      * Delete job result from redis.
      *
-     * @param string $id
      */
     public function clear()
     {
