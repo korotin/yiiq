@@ -17,6 +17,10 @@ use Yiiq\base\JobComponent;
  * Job status class.
  *
  * @author  Martin Stolz <herr.offizier@gmail.com>
+ *
+ * @property-read boolean isExecuting
+ * @property-read boolean isCompleted
+ * @property-read boolean isFailed
  */
 class Status extends JobComponent
 {
