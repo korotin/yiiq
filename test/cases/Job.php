@@ -18,9 +18,9 @@ abstract class Job extends Base
     {
         return [
             ['default_'.TEST_TOKEN, 1],
-            ['default_'.TEST_TOKEN, 5],
-            ['default_'.TEST_TOKEN, 10],
-            ['default_'.TEST_TOKEN, 15],
+            ['default_'.TEST_TOKEN, 2],
+            ['default_'.TEST_TOKEN, 4],
+            ['default_'.TEST_TOKEN, 6],
         ];
     }
 
@@ -29,7 +29,21 @@ abstract class Job extends Base
         return [
             ['\Yiiq\test\jobs\BadJob'],
             ['\Yiiq\test\jobs\BadJob2'],
-            ['\Yiiq\test\jobs\BadJob3'],
+        ];
+    }
+
+    public function queuesThreadsJobsProvider()
+    {
+        return [
+            [1, 1, 1],
+            [1, 2, 2],
+            [1, 2, 4],
+            [2, 1, 1],
+            [2, 2, 2],
+            [2, 2, 4],
+            [4, 1, 1],
+            [4, 2, 2],
+            [4, 2, 4],
         ];
     }
 

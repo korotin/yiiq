@@ -12,8 +12,9 @@ namespace Yiiq;
 
 use Yiiq\util\Health;
 use Yiiq\util\PoolCollection;
+use Yiiq\jobs\Builder;
+use Yiiq\jobs\Metadata;
 use Yiiq\jobs\Job;
-use Yiiq\jobs\Producer;
 
 /**
  * Yiiq component class.
@@ -131,7 +132,7 @@ class Yiiq extends \CApplicationComponent
     {
         if ($this->pools === null) {
             $this->pools = new PoolCollection($this);
-            $this->getPools()->
+            $this->pools->
                 addPool('pids', '\ARedisSet')->
                 addPool('executing', '\ARedisSortedSet')->
                 addPool('completed', '\ARedisSet')->
@@ -146,6 +147,57 @@ class Yiiq extends \CApplicationComponent
     }
 
     /**
+     * Set process title to given string.
+     * Process title is changing by cli_set_process_title (PHP >= 5.5) or
+     * setproctitle (if proctitle extension is available).
+     *
+     * @param string          $type
+     * @param string|string[] $queue
+     * @param string          $title
+     */
+    public function setProcessTitle($type, $queue, $title)
+    {
+        $titleTemplate = $this->titleTemplate;
+        if (!$titleTemplate) {
+            return;
+        }
+
+        if (is_array($queue)) {
+            $queue = implode(',', $queue);
+        }
+
+        $placeholders = array(
+            '{name}'    => $this->name,
+            '{type}'    => $type,
+            '{queue}'   => $queue,
+            '{message}' => $title,
+        );
+
+        $title =
+            str_replace(
+                array_keys($placeholders),
+                array_values($placeholders),
+                $titleTemplate
+            );
+
+        if (function_exists('cli_set_process_title')) {
+            cli_set_process_title($title);
+        } elseif (function_exists('setproctitle')) {
+            setproctitle($title);
+        }
+    }
+
+    /**
+     * Generate job id by increment.
+     *
+     * @return string
+     */
+    protected function generateId()
+    {
+        return \Yii::app()->redis->incr($this->prefix.':counter');
+    }
+
+    /**
      * Does job with given id exist.
      *
      * @param  string  $id
@@ -153,16 +205,30 @@ class Yiiq extends \CApplicationComponent
      */
     public function exists($id)
     {
-        $key = Job::getKey($this, $id);
+        $key = Metadata::getKey($this, $id);
 
         return \Yii::app()->redis->getClient()->exists($key);
     }
 
     /**
-     * Get job.
-     * If job is not found, \CException will be raised.
+     * Create a builder.
      *
-     * @param  string $id
+     * @param  string      $class
+     * @param  string|null $id
+     * @return Builder
+     */
+    public function create($class, $id = null)
+    {
+        $builder = new Builder($this, $id ?: $this->generateId());
+        $builder->withPayload($class);
+
+        return $builder;
+    }
+
+    /**
+     * Get job.
+     *
+     * @param  string|null $id
      * @return Job
      */
     public function get($id)
@@ -171,34 +237,24 @@ class Yiiq extends \CApplicationComponent
     }
 
     /**
-     * Create new job.
-     *
-     * @return Job
-     */
-    protected function create()
-    {
-        return new Job($this);
-    }
-
-    /**
      * Delete job by id.
-     * By default ($withData = true) job data will be also
+     * By default ($withMetadata = true) job data will be also
      * deleted.
      *
      * @param string $id
-     * @param bool   $withData (optional)
+     * @param bool   $withMetadata (optional)
      */
-    public function delete($id, $withData = true)
+    public function delete($id, $withMetadata = true)
     {
         if (!$this->exists($id)) {
             return;
         }
 
         $job = $this->get($id);
-        $this->getPools()->{$job->type}[$job->queue]->remove($id);
+        $this->getPools()->{$job->metadata->type}[$job->metadata->queue]->remove($id);
 
-        if ($withData) {
-            $job->delete();
+        if ($withMetadata) {
+            $job->metadata->delete();
         }
     }
 
@@ -215,43 +271,61 @@ class Yiiq extends \CApplicationComponent
         }
 
         $job = $this->get($id);
+        $metadata = $job->metadata;
 
-        $job->faults++;
-        $job->lastFailed = time();
+        $metadata->faults++;
+        $metadata->lastFailed = time();
 
         $this->getPools()->executing->remove($id);
 
         if (
             $this->faultIntervals
-            && $job->faults > count($this->faultIntervals)
+            && $metadata->faults > count($this->faultIntervals)
         ) {
-            $job->save(true);
+            $metadata->save(true);
             $this->delete($id, false);
             $this->getPools()->failed->add($id);
 
             return false;
         }
 
-        $timestamp = $job->lastFailed + $this->faultIntervals[$job->faults - 1];
+        $timestamp = $metadata->lastFailed + $this->faultIntervals[$metadata->faults - 1];
 
-        switch ($job->type) {
+        if ($metadata->type === self::TYPE_SIMPLE) {
+            $metadata->type = self::TYPE_SCHEDULED;
+            $metadata->timestamp = $timestamp;
+        }
+
+        $metadata->save(true);
+
+        $this->getPools()->{$metadata->type}[$metadata->queue]->add($job->id, $timestamp);
+
+        return true;
+    }
+
+    /**
+     * Enqueue job.
+     *
+     * @param Job $job
+     */
+    public function enqueue(Job $job)
+    {
+        $metadata = $job->metadata;
+        $pool = $this->getPools()->{$metadata->type}[$metadata->queue];
+
+        switch ($metadata->type) {
             case self::TYPE_SIMPLE:
-                $job->type = self::TYPE_SCHEDULED;
-                $job->timestamp = $timestamp;
-                // no break
+                $pool->add($job->id);
+                break;
 
             case self::TYPE_SCHEDULED:
-                $this->getPools()->scheduled[$job->queue]->add($job->id, $timestamp);
+                $pool->add($job->id, $metadata->timestamp);
                 break;
 
             case self::TYPE_REPEATABLE:
-                $this->getPools()->repeatable[$job->queue]->add($job->id, $timestamp);
+                $pool->add($job->id, time());
                 break;
         }
-
-        $job->save(true);
-
-        return true;
     }
 
     /**
@@ -263,20 +337,13 @@ class Yiiq extends \CApplicationComponent
      * @param  string|null $id    (optional) globally unique job id
      * @return Job|null
      */
-    public function enqueue($class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
+    public function enqueueSimple($class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
-        $job = $this->create();
-        $job->id = $id;
-        $job->queue = $queue;
-        $job->type = self::TYPE_SIMPLE;
-        $job->class = $class;
-        $job->args = $args;
-
-        if ($id = $job->save()) {
-            $this->getPools()->simple[$queue]->add($id);
-        }
-
-        return $job;
+        return $this->
+            create($class, $id)->
+            into($queue)->
+            withArgs($args)->
+            enqueue();
     }
 
     /**
@@ -291,19 +358,12 @@ class Yiiq extends \CApplicationComponent
      */
     public function enqueueAt($timestamp, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
-        $job = $this->create();
-        $job->id = $id;
-        $job->queue = $queue;
-        $job->type = self::TYPE_SCHEDULED;
-        $job->class = $class;
-        $job->args = $args;
-        $job->timestamp = $timestamp;
-
-        if ($id = $job->save()) {
-            $this->getPools()->scheduled[$queue]->add($id, $timestamp);
-        }
-
-        return $job;
+        return $this->
+            create($class, $id)->
+            into($queue)->
+            withArgs($args)->
+            runAt($timestamp)->
+            enqueue();
     }
 
     /**
@@ -318,12 +378,15 @@ class Yiiq extends \CApplicationComponent
      */
     public function enqueueAfter($interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
-        $interval = (int) floor($interval);
-
-        return $this->enqueueAt(time() + $interval, $class, $args, $queue, $id);
+        return $this->
+            create($class, $id)->
+            into($queue)->
+            withArgs($args)->
+            runAfter($interval)->
+            enqueue();
     }
 
-    /**
+     /**
      * Create a job, which will execute each $interval seconds.
      *
      * Unlike other job types repeatable job requires $id to be set.
@@ -338,85 +401,12 @@ class Yiiq extends \CApplicationComponent
      */
     public function enqueueRepeatable($id, $interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE)
     {
-        $interval = (int) floor($interval);
-
-        $job = $this->create();
-        $job->id = $id;
-        $job->queue = $queue;
-        $job->type = self::TYPE_REPEATABLE;
-        $job->class = $class;
-        $job->args = $args;
-        $job->interval = $interval;
-
-        if ($id = $job->save()) {
-            $this->getPools()->repeatable[$queue]->add($id, time());
-        }
-
-        return $job;
-    }
-
-    /**
-     * Create a job via job producer.
-     *
-     * @param  string   $class
-     * @return Producer
-     */
-    public function createJob($class)
-    {
-        return new Producer($this, $class);
-    }
-
-    /**
-     * Enqueue job by job producer.
-     *
-     * Called by \Yiiq\jobs\Producer.
-     * Returns job id.
-     *
-     * @param  Producer    $producer
-     * @return string|null
-     */
-    public function enqueueByProducer(Producer $producer)
-    {
-        switch ($producer->type) {
-            case self::TYPE_SIMPLE:
-                return $this->enqueueJob(
-                    $producer->class,
-                    $producer->args,
-                    $producer->queue,
-                    $producer->id
-                );
-                // no break
-
-            case self::TYPE_SCHEDULED:
-                if ($producer->timestamp) {
-                    return $this->enqueueJobAt(
-                        $producer->timestamp,
-                        $producer->class,
-                        $producer->args,
-                        $producer->queue,
-                        $producer->id
-                    );
-                } else {
-                    return $this->enqueueJobAfter(
-                        $producer->interval,
-                        $producer->class,
-                        $producer->args,
-                        $producer->queue,
-                        $producer->id
-                    );
-                }
-                // no break
-
-            case self::TYPE_REPEATABLE:
-                return $this->enqueueRepeatableJob(
-                    $producer->id,
-                    $producer->interval,
-                    $producer->class,
-                    $producer->args,
-                    $producer->queue
-                );
-                // no break
-        }
+        return $this->
+            create($class, $id)->
+            into($queue)->
+            withArgs($args)->
+            runEach($interval)->
+            enqueue();
     }
 
     /**
@@ -466,17 +456,17 @@ class Yiiq extends \CApplicationComponent
     {
         $scheduled = $this->getPools()->scheduled[$queue];
 
-        $data = $this->popFromSortedSet($scheduled);
-        if (!$data) {
+        $job = $this->popFromSortedSet($scheduled);
+        if (!$job) {
             return;
         }
 
         \Yii::app()->redis->zrem(
             $scheduled->name,
-            $data->id
+            $job->id
         );
 
-        return $data;
+        return $job;
     }
 
     /**
@@ -489,17 +479,17 @@ class Yiiq extends \CApplicationComponent
     {
         $repeatable = $this->getPools()->repeatable[$queue];
 
-        $data = $this->popFromSortedSet($repeatable);
-        if (!$data) {
+        $job = $this->popFromSortedSet($repeatable);
+        if (!$job) {
             return;
         }
 
         $repeatable->add(
-            $data->id,
-            time() + $data->interval
+            $job->id,
+            time() + $job->metadata->interval
         );
 
-        return $data;
+        return $job;
     }
 
     /**

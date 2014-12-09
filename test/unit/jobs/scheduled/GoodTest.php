@@ -48,9 +48,9 @@ class GoodTest extends Job
 
         foreach ($jobs as $job) {
             $this->assertTrue(\Yii::app()->yiiq->exists($job->id));
-            $this->assertFalse($job->isExecuting());
-            $this->assertFalse($job->isCompleted());
-            $this->assertFalse($job->isFailed());
+            $this->assertFalse($job->status->isExecuting);
+            $this->assertFalse($job->status->isCompleted);
+            $this->assertFalse($job->status->isFailed);
         }
 
         usleep(self::TIME_FOR_JOB + 2000000);
@@ -60,9 +60,9 @@ class GoodTest extends Job
         $this->assertTrue(file_exists($goodAfterPath));
         foreach ($jobs as $job) {
             $this->assertFalse(\Yii::app()->yiiq->exists($job->id));
-            $this->assertTrue($job->isCompleted());
-            $this->assertFalse($job->isExecuting());
-            $this->assertFalse($job->isFailed());
+            $this->assertTrue($job->status->isCompleted);
+            $this->assertFalse($job->status->isExecuting);
+            $this->assertFalse($job->status->isFailed);
         }
 
         $this->assertTrue(\Yii::app()->yiiq->health->check(false));

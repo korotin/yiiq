@@ -11,280 +11,95 @@
 namespace Yiiq\jobs;
 
 use Yiiq\Yiiq;
-use Yiiq\base\Component;
+use Yiiq\base\JobComponent;
 
 /**
- * Job  class.
+ * Job class.
  *
  * @author  Martin Stolz <herr.offizier@gmail.com>
+ *
+ * @property Metadata $metadata
+ * @property-read Status $status
+ * @property-read Result $result
+ * @property-read Payload $payload
  */
-class Job extends Component
+class Job extends JobComponent
 {
-    public $created = null;
-
-    public $id = null;
-    public $queue = null;
-    public $type = null;
-    public $class = null;
-    public $args =  null;
-    public $timestamp = null;
-    public $interval = null;
-    public $faults = 0;
-    public $lastFailed = null;
+    /**
+     * @var Metadata
+     */
+    protected $metadata = null;
 
     /**
-     * Get redis job key for given id.
-     *
-     * @param  string $id
-     * @return string
+     * @var Status
      */
-    public static function getKey(Yiiq $owner, $id)
-    {
-        return $owner->prefix.':job:'.$id;
-    }
-
-    public function __construct(Yiiq $owner, $id = null)
-    {
-        parent::__construct($owner);
-
-        if ($id) {
-            $this->id = $id;
-            $this->refresh();
-        }
-    }
-
-    public function __toString()
-    {
-        $keys = [
-            'created',
-            'id',
-            'queue',
-            'type',
-            'class',
-            'args',
-            'timestamp',
-            'interval',
-            'faults',
-            'lastFailed',
-        ];
-
-        $data = array();
-        foreach ($keys as $k) {
-            $data[$k] = $this->$k;
-        }
-        $data = array_filter($data);
-
-        return \CJSON::encode($data);
-    }
+    protected $status = null;
 
     /**
-     * Generate job id by increment.
-     *
-     * @return string
+     * @var Result
      */
-    protected function generateId()
-    {
-        return \Yii::app()->redis->incr($this->owner->prefix.':counter');
-    }
+    protected $result = null;
 
     /**
-     * Save job data to redis.
+     * Get metadata.
+     * At first call metadata will be loaded from redis.
      *
-     * @param  boolean     $overwrite (optional) overwrite existing job, default is false
-     * @return string|null id if job is saved or null
+     * @return Metadata
      */
-    public function save($overwrite = false)
+    public function getMetadata()
     {
-        if (
-            $this->id
-            && $this->owner->exists($this->id)
-            && !$overwrite
-        ) {
-            return;
+        if ($this->metadata === null) {
+            $this->metadata = new Metadata($this->owner, $this->id);
+            $this->metadata->refresh();
         }
 
-        $this->id = $this->id ?: $this->generateId();
-        $this->created = time();
+        return $this->metadata;
+    }
 
-        $saved = \Yii::app()->redis->getClient()->set(
-            self::getKey($this->owner, $this->id),
-            (string) $this
-        );
+    /**
+     * Set metadata.
+     *
+     * @param Metadata $metadata
+     */
+    public function setMetadata(Metadata $metadata)
+    {
+        $this->metadata = $metadata;
+    }
 
-        if (!$saved) {
-            return;
+    /**
+     * @return Status
+     */
+    public function getStatus()
+    {
+        if ($this->status === null) {
+            $this->status = new Status($this->owner, $this->id);
         }
 
-        return $this->id;
-    }
-
-    public function delete()
-    {
-        \Yii::app()->redis->getClient()->del(
-            self::getKey($this->owner, $this->id)
-        );
+        return $this->status;
     }
 
     /**
-     * Is job executing at moment.
-     *
-     * @return boolean
+     * @return Result
      */
-    public function isExecuting()
+    public function getResult()
     {
-        return \Yii::app()->redis->getClient()->zrank(
-            $this->owner->pools->executing->name,
-            $this->id
-        ) !== false;
-    }
-
-    /**
-     * Is job completed successfully.
-     *
-     * @param  string  $id
-     * @return boolean
-     */
-    public function isCompleted()
-    {
-        return (bool) \Yii::app()->redis->getClient()->sismember(
-            $this->owner->pools->completed->name,
-            $this->id
-        );
-    }
-
-    /**
-     * Is job failed.
-     *
-     * @param  string  $id
-     * @return boolean
-     */
-    public function isFailed()
-    {
-        return (bool) \Yii::app()->redis->getClient()->sismember(
-            $this->owner->pools->failed->name,
-            $this->id
-        );
-    }
-
-    /**
-     * Get redis job result key for given id.
-     *
-     * @return string
-     */
-    protected function getResultKey()
-    {
-        return $this->owner->prefix.':result:'.$this->id;
-    }
-
-    /**
-     * Save job result to redis.
-     * Empty results will not be saved.
-     *
-     * @param mixed $result
-     */
-    protected function saveResult($result)
-    {
-        if ($result === null) {
-            return;
+        if ($this->result === null) {
+            $this->result = new Result($this->owner, $this->id);
         }
 
-        $key = $this->getResultKey();
-        $result = \CJSON::encode($result);
-
-        \Yii::app()->redis->getClient()->set(
-            $key,
-            $result
-        );
+        return $this->result;
     }
 
     /**
-     * Get job result.
+     * Get payload object.
      *
-     * @param  string  $id
-     * @param  boolean $clear delete result from redis
-     * @return mixed
-     */
-    public function getResult($clear = false)
-    {
-        $key = $this->getResultKey();
-        $raw = \Yii::app()->redis->getClient()->get($key);
-
-        if ($raw && $clear) {
-            $this->clearResult();
-        }
-
-        return $raw ? \CJSON::decode($raw) : null;
-    }
-
-    /**
-     * Delete job result from redis.
-     *
-     * @param string $id
-     */
-    public function clearResult()
-    {
-        $key = $this->getResultKey();
-        \Yii::app()->redis->getClient()->del($key);
-    }
-
-    public function refresh()
-    {
-        if (!$this->id) {
-            return;
-        }
-
-        $key = Job::getKey($this->owner, $this->id);
-        $data = \Yii::app()->redis->getClient()->get($key);
-        if (!$data) {
-            return;
-        }
-
-        $data = \CJSON::decode($data);
-        foreach ($data as $k => $v) {
-            $this->$k = $v;
-        }
-    }
-
-    /**
-     * Mark job as started.
-     * Job id will be added to executing pool for current queue.
-     *
-     * @param int $pid forked worker pid
-     */
-    public function markAsStarted($pid)
-    {
-        $this->owner->pools->executing->add($this->id, $pid);
-    }
-
-    /**
-     * Mark job as completed.
-     * Jod id will be removed from executing pool and job data will be deleted
-     * for non-repeatable jobs.
-     *
-     * @param mixed $result
-     */
-    public function markAsCompleted($result)
-    {
-        $this->owner->pools->executing->remove($this->id);
-        if ($this->type === Yiiq::TYPE_REPEATABLE) {
-            return;
-        }
-
-        $this->owner->pools->completed->add($this->id);
-        $this->delete();
-
-        $this->saveResult($result);
-    }
-
-    /**
-     * Get job payload object.
-     *
-     * @return \Yiiq\jobs\Base
+     * @return \Yiiq\jobs\Payload
      */
     public function getPayload()
     {
-        $class = $this->class;
+        $metadata = $this->getMetadata();
+        $class = $metadata->class;
 
-        return new $class($this->queue, $this->type, $this->id);
+        return new $class($metadata->queue, $metadata->type, $metadata->id);
     }
 }

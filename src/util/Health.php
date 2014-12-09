@@ -120,7 +120,7 @@ class Health extends Component
                 continue;
             }
             $stopped++;
-            if ($this->owner->restoreJob($id)) {
+            if ($this->owner->restore($id)) {
                 $restored++;
             }
         }

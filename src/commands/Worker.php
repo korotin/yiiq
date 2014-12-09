@@ -12,6 +12,7 @@ namespace Yiiq\commands;
 
 use Yiiq\Yiiq;
 use Yiiq\jobs\Job;
+use Yiiq\jobs\Runner;
 
 /**
  * Yiiq worker command class.
@@ -20,20 +21,6 @@ use Yiiq\jobs\Job;
  */
 class Worker extends Base
 {
-    /**
-     * Instance name,
-     *
-     * @var string
-     */
-    protected $instanceName = null;
-
-    /**
-     * Process type displayed in process title.
-     *
-     * @var string
-     */
-    protected $processType = 'worker';
-
     /**
      * Worker pid.
      *
@@ -47,13 +34,6 @@ class Worker extends Base
      * @var string[]
      */
     protected $queues;
-
-    /**
-     * Stringifies queues names.
-     *
-     * @var string
-     */
-    protected $stringifiedQueues;
 
     /**
      * Max count of child threads.
@@ -72,7 +52,7 @@ class Worker extends Base
     /**
      * Child pid to job id array.
      *
-     * @var string[]
+     * @var Job[]
      */
     protected $pidToJob = [];
 
@@ -90,49 +70,6 @@ class Worker extends Base
      * @var boolean
      */
     protected $signalHandled = false;
-
-    /**
-     * Stringify queues array.
-     *
-     * @param  string[] $queues
-     * @return string
-     */
-    protected function stringifyQueues(array $queues)
-    {
-        asort($queues);
-
-        return implode(',', $queues);
-    }
-
-    /**
-     * Set process title to given string.
-     * Process title is changing by cli_set_process_title (PHP >= 5.5) or
-     * setproctitle (if proctitle extension is available).
-     *
-     * @param string      $title
-     * @param string|null $queue
-     */
-    protected function setProcessTitle($title, $queue = null)
-    {
-        $titleTemplate = \Yii::app()->yiiq->titleTemplate;
-        if (!$titleTemplate) {
-            return;
-        }
-
-        $placeholders = array(
-            '{name}'    => $this->instanceName,
-            '{type}'    => $this->processType,
-            '{queue}'   => $queue ?: $this->stringifiedQueues,
-            '{message}' => $title,
-        );
-
-        $title = str_replace(array_keys($placeholders), array_values($placeholders), $titleTemplate);
-        if (function_exists('cli_set_process_title')) {
-            cli_set_process_title($title);
-        } elseif (function_exists('setproctitle')) {
-            setproctitle($title);
-        }
-    }
 
     /**
      * Return queue-to-pid key name.
@@ -322,7 +259,7 @@ class Worker extends Base
             // If status is non-zero or job is still marked as executing,
             // child process failed.
 
-            if ($status || $job->isExecuting()) {
+            if ($status || $job->status->isExecuting) {
                 \Yii::app()->yiiq->restore($job->id);
             }
         } while ($childPid > 0);
@@ -343,52 +280,19 @@ class Worker extends Base
      * Job will be executed in fork and method will return
      * after the fork get initialized.
      *
-     * @param string $queue
-     * @param Job    $job
+     * @param Job $job
      */
-    protected function runJob($queue, Job $job)
+    protected function runJob(Job $job)
     {
-        // Try to fork process.
-        $childPid = pcntl_fork();
+        $runner = new Runner(\Yii::app()->yiiq, $job);
 
-        // Force reconnect to redis for parent and child due to bug in PhpRedis
-        // (https://github.com/nicolasff/phpredis/issues/474).
-        \Yii::app()->redis->getClient(true);
-
-        if ($childPid > 0) {
-            // If we're in parent process, add child pid to pool and return.
-            $this->pidToJob[$childPid] = $job;
-            $this->getChildPool()->add($childPid);
-
-            return;
-        } elseif ($childPid < 0) {
-            // If we're failed to fork process, restore job and exit.
-            \Yii::app()->yiiq->restore($job->id);
-
+        $childPid = $runner->run();
+        if (!$childPid) {
             return;
         }
 
-        // We are child - get our pid.
-        $childPid = posix_getpid();
-
-        $this->processType = 'job';
-        $this->setProcessTitle('initializing', $queue);
-
-        \Yii::trace('Starting job '.$job->queue.':'.$job->id.' ('.$job->class.')...');
-        $this->setProcessTitle('executing '.$job->id.' ('.$job->class.')', $job->queue);
-
-        $job->markAsStarted($childPid);
-        \Yii::app()->yiiq->onBeforeJob();
-
-        $payload = $job->payload;
-        $result = $payload->execute($job->args);
-
-        $job->markAsCompleted($result);
-        \Yii::app()->yiiq->onAfterJob();
-
-        \Yii::trace('Job '.$job->queue.':'.$job->id.' done.');
-
-        exit(0);
+        $this->pidToJob[$childPid] = $job;
+        $this->getChildPool()->add($childPid);
     }
 
     /**
@@ -396,10 +300,11 @@ class Worker extends Base
      */
     protected function loop()
     {
-        $offset     = null;
-        $count      = count($this->queues);
-        $queue      = null;
+        $count  = count($this->queues);
+        $queue  = null;
         $job    = null;
+
+        $queueIterator = new \InfiniteIterator(new \ArrayIterator($this->queues));
 
         while (!$this->shutdown) {
             // Iterate over free threads.
@@ -412,13 +317,16 @@ class Worker extends Base
                 }
 
                 // Look for new job.
-                // Iterate over all watched queues, stop when new job found.
-                // If the previous job was found in first queue, iteration will be started from second
-                // queue etc.
-                for ($index = 0; $index < $count; $index++) {
-                    $queue = $this->queues[($index + $offset) % $count];
+                // Iterate over all watched queues, stop when new job found or
+                // all queues iterated.
+                $iterationCount = 0;
+                foreach ($queueIterator as $queue) {
                     if ($job = \Yii::app()->yiiq->popJob($queue)) {
-                        $offset = ($index + 1) % $count;
+                        break;
+                    }
+
+                    $iterationCount++;
+                    if ($iterationCount >= $count) {
                         break;
                     }
                 }
@@ -429,7 +337,7 @@ class Worker extends Base
                 }
 
                 // Execute found job.
-                $this->runJob($queue, $job);
+                $this->runJob($job);
             }
 
             if ($this->shutdown) {
@@ -438,13 +346,17 @@ class Worker extends Base
 
             // If no free slots available wait for any child to exit. Otherwise just wait some time.
             if (!$this->hasFreeThread()) {
-                $this->setProcessTitle(
+                \Yii::app()->yiiq->setProcessTitle(
+                    'worker',
+                    $this->queues,
                     'no free threads ('.$this->maxThreads.' threads)'
                 );
 
                 $this->waitForThread();
             } else {
-                $this->setProcessTitle(
+                \Yii::app()->yiiq->setProcessTitle(
+                    'worker',
+                    $this->queues,
                     'no new jobs ('.$this->getThreadsCount()
                     .' of '.$this->maxThreads.' threads busy)'
                 );
@@ -467,23 +379,23 @@ class Worker extends Base
      */
     public function actionRun(array $queue, $threads)
     {
-        $this->instanceName = \Yii::app()->yiiq->name ?: \Yii::getPathOfAlias('application');
+        asort($queue);
+
         $this->pid          = posix_getpid();
         $this->queues       = $queue;
-        $this->stringifiedQueues = $this->stringifyQueues($this->queues);
         $this->maxThreads   = (int) $threads;
 
-        $this->setProcessTitle('initializing');
+        \Yii::app()->yiiq->setProcessTitle('worker', $this->queues, 'initializing');
 
         $this->checkRunningWorkers();
         $this->setupSignals();
         $this->savePid();
 
-        \Yii::trace('Started new yiiq worker '.$this->pid.' for '.$this->stringifiedQueues.'.');
+        \Yii::trace('Started new yiiq worker '.$this->pid.' for '.implode(', ', $this->queues).'.');
 
         $this->loop();
 
-        $this->setProcessTitle('terminating');
+        \Yii::app()->yiiq->setProcessTitle('worker', $this->queues, 'terminating');
 
         $this->waitForThreads();
         $this->clearPid();

@@ -44,8 +44,8 @@ class GoodTest extends Job
         $this->assertLessThanOrEqual(6, $contentSize);
 
         $this->assertTrue(\Yii::app()->yiiq->exists('goodjob'));
-        $this->assertFalse($job->isCompleted());
-        $this->assertFalse($job->isFailed());
+        $this->assertFalse($job->status->isCompleted);
+        $this->assertFalse($job->status->isFailed);
 
         \Yii::app()->yiiq->delete('goodjob');
         $this->assertFalse(\Yii::app()->yiiq->exists('goodjob'));

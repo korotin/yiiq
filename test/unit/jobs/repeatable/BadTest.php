@@ -34,9 +34,9 @@ class BadTest extends Job
         $this->assertContains($procTitle, $this->exec('ps aux'));
 
         $this->assertTrue(\Yii::app()->yiiq->exists('badjob'));
-        $this->assertFalse($job->isCompleted());
-        $this->assertFalse($job->isExecuting());
-        $this->assertTrue($job->isFailed());
+        $this->assertFalse($job->status->isCompleted);
+        $this->assertFalse($job->status->isExecuting);
+        $this->assertTrue($job->status->isFailed);
 
         $this->assertTrue(\Yii::app()->yiiq->health->check(false));
         $this->stopYiiq();
