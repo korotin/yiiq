@@ -152,7 +152,7 @@ class Yiiq extends \CApplicationComponent
      * setproctitle (if proctitle extension is available).
      *
      * @param string          $type
-     * @param string $queue
+     * @param string|string[] $queue
      * @param string          $title
      */
     public function setProcessTitle($type, $queue, $title)
@@ -392,12 +392,12 @@ class Yiiq extends \CApplicationComponent
      * Unlike other job types repeatable job requires $id to be set.
      * If job with given id already exists, it will be overwritten.
      *
-     * @param  string  $id
-     * @param  integer $interval
-     * @param  string  $class
-     * @param  array   $args
-     * @param  string  $queue
-     * @return Job
+     * @param  string   $id
+     * @param  integer  $interval
+     * @param  string   $class
+     * @param  array    $args
+     * @param  string   $queue
+     * @return Job|null
      */
     public function enqueueRepeatable($id, $interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE)
     {
