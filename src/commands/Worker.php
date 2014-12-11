@@ -13,6 +13,7 @@ namespace Yiiq\commands;
 use Yiiq\Yiiq;
 use Yiiq\jobs\Job;
 use Yiiq\jobs\Runner;
+use Yiiq\util\Queue;
 
 /**
  * Yiiq worker command class.
@@ -31,7 +32,7 @@ class Worker extends Base
     /**
      * Worker queues.
      *
-     * @var string[]
+     * @var Queue[]
      */
     protected $queues;
 
@@ -321,7 +322,7 @@ class Worker extends Base
                 // all queues iterated.
                 $iterationCount = 0;
                 foreach ($queueIterator as $queue) {
-                    if ($job = \Yii::app()->yiiq->popJob($queue)) {
+                    if ($job = $queue->pop()) {
                         break;
                     }
 
@@ -382,7 +383,9 @@ class Worker extends Base
         asort($queue);
 
         $this->pid          = posix_getpid();
-        $this->queues       = $queue;
+        $this->queues       = array_map(function ($queue) {
+            return \Yii::app()->yiiq->queues[$queue];
+        }, $queue);
         $this->maxThreads   = (int) $threads;
 
         \Yii::app()->yiiq->setProcessTitle('worker', $this->queues, 'initializing');

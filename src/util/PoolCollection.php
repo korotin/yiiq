@@ -11,48 +11,42 @@
 namespace Yiiq\util;
 
 use Yiiq\Yiiq;
-use Yiiq\base\Component;
+use Yiiq\base\Collection;
 
 /**
  * Pool collection class.
  *
  * @author  Martin Stolz <herr.offizier@gmail.com>
  */
-class PoolCollection extends Component
+class PoolCollection extends Collection
 {
     /**
-     * @var array
-     */
-    protected $pools = [];
-
-    /**
+     * Add single pool to collection.
+     * 
      * @param string $type
      * @param string $class
+     * @return  PoolCollection
      */
     public function addPool($type, $class)
     {
-        $this->pools[$type] = new $class($this->owner->prefix.':'.$type);
-
-        return $this;
+        return $this->add(
+            $type,
+            new $class($this->owner->prefix.':'.$type)
+        );
     }
 
     /**
+     * Add pool group to collection.
+     * 
      * @param string $type
      * @param string $class
+     * @return  PoolCollection
      */
     public function addPoolGroup($type, $class)
     {
-        $this->pools[$type] = new PoolGroup($this->owner, $type, $class);
-
-        return $this;
-    }
-
-    public function __get($name)
-    {
-        if (isset($this->pools[$name])) {
-            return $this->pools[$name];
-        }
-
-        return parent::__get($name);
+        return $this->add(
+            $type,
+            new PoolGroup($this->owner, $type, $class)
+        );
     }
 }

@@ -40,6 +40,11 @@ class Job extends JobComponent
      */
     protected $result = null;
 
+    public function __toString()
+    {
+        return $this->getMetadata()->queue.':'.$this->id;
+    }
+
     /**
      * Get metadata.
      * At first call metadata will be loaded from redis.

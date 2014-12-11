@@ -157,7 +157,7 @@ class Builder extends JobComponent
             return;
         }
 
-        $this->owner->enqueue($job);
+        $this->owner->queues[$job->metadata->queue]->push($job);
 
         return $job;
     }

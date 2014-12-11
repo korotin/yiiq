@@ -87,7 +87,6 @@ class Status extends JobComponent
     /**
      * Mark job as completed.
      * Jod id will be removed from executing pool and added to completed pool.
-     *
      */
     public function markAsCompleted()
     {

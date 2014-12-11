@@ -12,6 +12,7 @@ namespace Yiiq;
 
 use Yiiq\util\Health;
 use Yiiq\util\PoolCollection;
+use Yiiq\util\QueueCollection;
 use Yiiq\jobs\Builder;
 use Yiiq\jobs\Metadata;
 use Yiiq\jobs\Job;
@@ -23,6 +24,7 @@ use Yiiq\jobs\Job;
  *
  * @property-read Health $health
  * @property-read PoolCollection $pools
+ * @property-read QueueCollection $queues
  */
 class Yiiq extends \CApplicationComponent
 {
@@ -91,7 +93,14 @@ class Yiiq extends \CApplicationComponent
      *
      * @var PoolCollection
      */
-    protected $pools       = null;
+    protected $pools        = null;
+
+    /**
+     * Queue collection.
+     *
+     * @var QueueCollection
+     */
+    protected $queues       = null;
 
     /**
      * Get health checker component.
@@ -128,6 +137,20 @@ class Yiiq extends \CApplicationComponent
         }
 
         return $this->pools;
+    }
+
+    /**
+     * Get queue collection.
+     * 
+     * @return QueueCollection
+     */
+    public function getQueues()
+    {
+        if ($this->queues === null) {
+            $this->queues = new QueueCollection($this);
+        }
+
+        return $this->queues;
     }
 
     /**
@@ -288,31 +311,6 @@ class Yiiq extends \CApplicationComponent
     }
 
     /**
-     * Enqueue job.
-     *
-     * @param Job $job
-     */
-    public function enqueue(Job $job)
-    {
-        $metadata = $job->metadata;
-        $pool = $this->getPools()->{$metadata->type}[$metadata->queue];
-
-        switch ($metadata->type) {
-            case self::TYPE_SIMPLE:
-                $pool->add($job->id);
-                break;
-
-            case self::TYPE_SCHEDULED:
-                $pool->add($job->id, $metadata->timestamp);
-                break;
-
-            case self::TYPE_REPEATABLE:
-                $pool->add($job->id, time());
-                break;
-        }
-    }
-
-    /**
      * Create a simple job in given queue.
      *
      * @param  string      $class job class extended from \Yiiq\jobs\Base
@@ -391,110 +389,5 @@ class Yiiq extends \CApplicationComponent
             withArgs($args)->
             runEach($interval)->
             enqueue();
-    }
-
-    /**
-     * Pop job from sorted set.
-     *
-     * @param  \ARedisSortedSet $set
-     * @return Job|null
-     */
-    protected function popFromSortedSet(\ARedisSortedSet $set)
-    {
-        $ids = \Yii::app()->redis->zrangebyscore(
-            $set->name,
-            0,
-            time(),
-            ['limit' => [0, 1]]
-        );
-
-        if (!$ids) {
-            return;
-        }
-
-        return $this->get(reset($ids));
-    }
-
-    /**
-     * Pop simple job id from given queue.
-     *
-     * @param  string   $queue
-     * @return Job|null
-     */
-    protected function popSimpleJob($queue)
-    {
-        if (!($id = $this->getPools()->simple[$queue]->pop())) {
-            return;
-        }
-
-        return $this->get($id);
-    }
-
-    /**
-     * Pop scheduled job id from given queue.
-     *
-     * @param  string   $queue
-     * @return Job|null
-     */
-    protected function popScheduledJob($queue)
-    {
-        $scheduled = $this->getPools()->scheduled[$queue];
-
-        $job = $this->popFromSortedSet($scheduled);
-        if (!$job) {
-            return;
-        }
-
-        \Yii::app()->redis->zrem(
-            $scheduled->name,
-            $job->id
-        );
-
-        return $job;
-    }
-
-    /**
-     * Pop repeatable job id from given queue.
-     *
-     * @param  string   $queue
-     * @return Job|null
-     */
-    protected function popRepeatableJob($queue)
-    {
-        $repeatable = $this->getPools()->repeatable[$queue];
-
-        $job = $this->popFromSortedSet($repeatable);
-        if (!$job) {
-            return;
-        }
-
-        $repeatable->add(
-            $job->id,
-            time() + $job->metadata->interval
-        );
-
-        return $job;
-    }
-
-    /**
-     * Pop schedlued or simple job id from given queue.
-     *
-     * @param  string   $queue (optional) Yiiq::DEFAULT_QUEUE by default
-     * @return Job|null
-     */
-    public function popJob($queue = self::DEFAULT_QUEUE)
-    {
-        $methods = [
-            'popScheduledJob',
-            'popRepeatableJob',
-            'popSimpleJob',
-        ];
-
-        foreach ($methods as $method) {
-            $jobJob = $this->$method($queue);
-            if ($jobJob) {
-                return $jobJob;
-            }
-        }
     }
 }
