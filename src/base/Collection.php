@@ -31,7 +31,7 @@ abstract class Collection extends Component implements \ArrayAccess
      * Cannot be called outside class.
      * 
      * @param string $name
-     * @param string $value
+     * @param mixed $value
      */
     protected function add($name, $value)
     {
@@ -62,6 +62,12 @@ abstract class Collection extends Component implements \ArrayAccess
         return isset($this->items[$name]);
     }
 
+    /**
+     * Get item from collection by name.
+     * 
+     * @param  string $name
+     * @return mixed
+     */
     public function get($name)
     {
         $this->beforeGet($name);
@@ -73,6 +79,10 @@ abstract class Collection extends Component implements \ArrayAccess
         throw new \CException('Item '.$name.' is missing in '.__CLASS__.'.');
     }
 
+    /**
+     * @param  string $name
+     * @return mixed
+     */
     public function __get($name)
     {
         return $this->get($name);
