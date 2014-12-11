@@ -53,34 +53,32 @@ class Runner extends Component
 
         // We are child - get our pid.
         $childPid = posix_getpid();
-
+        
+        $metadata = $job->metadata;
+        $status = $job->status;
+        
         $this->owner->setProcessTitle(
             'job',
-            $job->metadata->queue,
-            'initializing'
+            $metadata->queue,
+            'executing '.$metadata->id.' ('.$metadata->class.')'
         );
 
-        \Yii::trace('Starting job '.$job->metadata->queue.':'.$job->id.' ('.$job->metadata->class.')...');
-        $this->owner->setProcessTitle(
-            'job',
-            $job->metadata->queue,
-            'executing '.$job->metadata->id.' ('.$job->metadata->class.')'
-        );
+        \Yii::trace('Starting job '.$metadata->queue.':'.$job->id.' ('.$metadata->class.')...');
 
-        $job->status->markAsStarted($childPid);
+        $status->markAsStarted($childPid);
 
         $payload = $job->payload;
-        $result = $payload->execute($job->metadata->args);
+        $result = $payload->execute($metadata->args);
 
-        if ($job->metadata->type === Yiiq::TYPE_REPEATABLE) {
-            $job->status->markAsStopped();
+        if ($metadata->type === Yiiq::TYPE_REPEATABLE) {
+            $status->markAsStopped();
         } else {
-            $job->metadata->delete();
+            $metadata->delete();
             $job->result->save($result);
-            $job->status->markAsCompleted();
+            $status->markAsCompleted();
         }
 
-        \Yii::trace('Job '.$job->metadata->queue.':'.$job->metadata->id.' done.');
+        \Yii::trace('Job '.$metadata->queue.':'.$job->id.' done.');
 
         exit(0);
     }
