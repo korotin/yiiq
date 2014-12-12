@@ -22,7 +22,7 @@ class CommonTest extends Job
         $this->assertNotContains($this->getBaseProcessTitle(), $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
-        $job = \Yii::app()->yiiq->enqueueSimple('\Yiiq\test\jobs\WaitJob', ['sleep' => 2], $queue);
+        $job = \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\WaitJob', ['sleep' => 2], $queue);
 
         usleep(1500000);
 
@@ -48,7 +48,7 @@ class CommonTest extends Job
         $this->startYiiq($queue, $threads);
 
         $result = rand();
-        $job = \Yii::app()->yiiq->enqueueSimple('\Yiiq\test\jobs\ReturnJob', ['result' => $result], $queue);
+        $job = \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\ReturnJob', ['result' => $result], $queue);
 
         $this->waitForJobs($threads, 1);
 
@@ -85,7 +85,7 @@ class CommonTest extends Job
             for ($i = 0; $i < $jobCount; $i++) {
                 $files[] = 'goodjob_'.$queue.'_'.$i.'_'.TEST_TOKEN;
                 $jobs[] =
-                    \Yii::app()->yiiq->enqueueSimple(
+                    \Yii::app()->yiiq->enqueue(
                         '\Yiiq\test\jobs\GoodJob',
                         ['file' => $files[count($jobs)]],
                         $queue

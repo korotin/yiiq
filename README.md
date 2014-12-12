@@ -6,7 +6,7 @@
 
 To run a job just wrap it in class and type: 
 ```php
-Yii::app()->yiiq->enqueueSimple('\MyJob');
+Yii::app()->yiiq->enqueue('\MyJob');
 ```
 And it's done!
 
@@ -119,9 +119,9 @@ class YiiqDummyJob extends \Yiiq\jobs\Payload
      */
     public function run()
     {
-        Yii::trace('Started dummy job '.$this->queue.':'.$this->jobId.' (sleep for '.$this->sleep.'s).');
+        Yii::trace('Started dummy job '.$this->queue.':'.$this->id.' (sleep for '.$this->sleep.'s).');
         sleep($this->sleep);
-        Yii::trace('Job '.$this->queue.':'.$this->jobId.' completed.');
+        Yii::trace('Job '.$this->queue.':'.$this->id.' completed.');
     }
 
 }
@@ -135,13 +135,44 @@ To add a simple job you may use one of following calls. As you already know, thi
 
 ```php
 // Add YiiqDummyJob with default arguments to default queue.
-Yii::app()->yiiq->enqueueSimple('\YiiqDummyJob');
+
+// Via arguments:
+$job = Yii::app()->yiiq->enqueue('\YiiqDummyJob');
+
+// Via method chaining:
+$job = Yii::app()->yiiq->
+    create('\YiiqDummyJob')->
+    enqueue();
 
 // Add YiiqDummyJob with customized arguments to default queue.
-Yii::app()->yiiq->enqueueSimple('\YiiqDummyJob', ['sleep' => 5]);
+
+// Via arguments:
+$job = Yii::app()->yiiq->enqueue(
+    '\YiiqDummyJob', 
+    ['sleep' => 5]
+);
+
+// Via method chaining:
+$job = Yii::app()->yiiq->
+    create('\YiiqDummyJob')->
+    withArgs(['sleep' => 5])->
+    enqueue();
 
 // Add YiiqDummyJob with customized arguments to 'custom' queue.
-Yii::app()->yiiq->enqueueSimple('\YiiqDummyJob', ['sleep' => 5], 'custom');
+
+// Via arguments:
+$job = Yii::app()->yiiq->enqueue(
+    '\YiiqDummyJob', 
+    ['sleep' => 5], 
+    'custom'
+);
+
+// Via method chaining:
+$job = Yii::app()->yiiq->
+    create('\YiiqDummyJob')->
+    into('custom')->
+    withArgs(['sleep' => 5])->
+    enqueue();
 ```
 
 #### Scheduled job
@@ -150,10 +181,32 @@ To schedule a job at certain time, you must specify time or interval:
 
 ```php
 // Run job at certain time.
-Yii::app()->yiiq->enqueueAt(time() + 60, 'YiiqDummyJob');
+
+// Via arguments:
+$job = Yii::app()->yiiq->enqueueAt(
+    time() + 60, 
+    'YiiqDummyJob'
+);
+
+// Via method chaining:
+$job = Yii::app()->yiiq->
+    create('\YiiqDummyJob')->
+    runAt(time() + 60)->
+    enqueue();
 
 // Run job after 60 seconds. In fact exactly the same as above.
-Yii::app()->yiiq->enqueueAfter(60, '\YiiqDummyJob');
+
+// Via arguments:
+$job = Yii::app()->yiiq->enqueueAfter(
+    60, 
+    '\YiiqDummyJob'
+);
+
+// Via method chaining:
+$job = Yii::app()->yiiq->
+    create('\YiiqDummyJob')->
+    runAt(time() + 60)->
+    enqueue();
 ```
 
 #### Repeatable job
@@ -161,7 +214,18 @@ Yii::app()->yiiq->enqueueAfter(60, '\YiiqDummyJob');
 To create a repeatable job, you may use following code:
 
 ```php
-// Run job with id 'myJob' each 300 seconds.
-Yii::app()->yiiq->enqueueRepeatable('myJob', 300, '\YiiqDummyJob');
+// Run job each 300 seconds.
+
+// Via arguments:
+$job = Yii::app()->yiiq->enqueueRepeatable(
+    300, 
+    '\YiiqDummyJob'
+);
+
+// Via method chaining:
+$job = Yii::app()->yiiq->
+    create('\YiiqDummyJob')->
+    runEach(300)->
+    enqueue();
 ```
-Note that repeatable job cannot return any data back to **Yiiq**.
+Note that repeatable job cannot return any data back to **Yiiq**.`

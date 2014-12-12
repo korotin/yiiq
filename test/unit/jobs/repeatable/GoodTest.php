@@ -27,12 +27,12 @@ class GoodTest extends Job
         $this->assertNotContains($procTitle, $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
-        $job = \Yii::app()->yiiq->enqueueRepeatable(
-            'goodjob',
+        $job = \Yii::app()->yiiq->enqueueEach(
             1,
             '\Yiiq\test\jobs\GoodJob',
             ['content' => '*', 'file' => $goodFile],
-            $queue
+            $queue,
+            'goodjob'
         );
 
         usleep(5000000);

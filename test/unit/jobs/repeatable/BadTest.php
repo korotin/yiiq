@@ -25,7 +25,7 @@ class BadTest extends Job
         $this->assertNotContains($procTitle, $this->exec('ps aux'));
         $this->startYiiq($queue, $threads);
 
-        $job = \Yii::app()->yiiq->enqueueRepeatable('badjob', 1, $badClass, [], $queue);
+        $job = \Yii::app()->yiiq->enqueueEach(1, $badClass, [], $queue, 'badjob');
 
         $this->waitForJobs($threads, 1, true);
 

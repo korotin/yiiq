@@ -23,7 +23,7 @@ class Queue extends Component
 {
     /**
      * Queue name.
-     * 
+     *
      * @var string
      */
     protected $name = null;
@@ -41,8 +41,8 @@ class Queue extends Component
 
     /**
      * Add job to queue.
-     * 
-     * @param  Job    $job
+     *
+     * @param Job $job
      */
     public function push(Job $job)
     {
@@ -167,5 +167,21 @@ class Queue extends Component
                 return $job;
             }
         }
+    }
+
+    /**
+     * Delete job from queue.
+     *
+     * @param Job $job
+     */
+    public function delete(Job $job)
+    {
+        $metadata = $job->metadata;
+
+        if ($this->name !== $metadata->queue) {
+            throw new \CException('Cannot delete job with wrong queue name.');
+        }
+
+        $this->owner->pools->{$metadata->type}[$metadata->queue]->remove($job->id);
     }
 }

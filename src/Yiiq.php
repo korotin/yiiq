@@ -141,7 +141,7 @@ class Yiiq extends \CApplicationComponent
 
     /**
      * Get queue collection.
-     * 
+     *
      * @return QueueCollection
      */
     public function getQueues()
@@ -220,14 +220,16 @@ class Yiiq extends \CApplicationComponent
     /**
      * Create a builder.
      *
-     * @param  string      $class
+     * @param  string|null $class
      * @param  string|null $id
      * @return Builder
      */
-    public function create($class, $id = null)
+    public function create($class = null, $id = null)
     {
         $builder = new Builder($this, $id ?: $this->generateId());
-        $builder->withPayload($class);
+        if ($class) {
+            $builder->withPayload($class);
+        }
 
         return $builder;
     }
@@ -258,7 +260,8 @@ class Yiiq extends \CApplicationComponent
         }
 
         $job = $this->get($id);
-        $this->getPools()->{$job->metadata->type}[$job->metadata->queue]->remove($id);
+
+        $this->getQueues()[$job->metadata->queue]->delete($job);
 
         if ($withMetadata) {
             $job->metadata->delete();
@@ -319,7 +322,7 @@ class Yiiq extends \CApplicationComponent
      * @param  string|null $id    (optional) globally unique job id
      * @return Job|null
      */
-    public function enqueueSimple($class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
+    public function enqueue($class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
         return $this->
             create($class, $id)->
@@ -374,14 +377,14 @@ class Yiiq extends \CApplicationComponent
      * Unlike other job types repeatable job requires $id to be set.
      * If job with given id already exists, it will be overwritten.
      *
-     * @param  string   $id
-     * @param  integer  $interval
-     * @param  string   $class
-     * @param  array    $args
-     * @param  string   $queue
+     * @param  integer     $interval
+     * @param  string      $class
+     * @param  array       $args
+     * @param  string      $queue
+     * @param  string|null $id
      * @return Job|null
      */
-    public function enqueueRepeatable($id, $interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE)
+    public function enqueueEach($interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
         return $this->
             create($class, $id)->

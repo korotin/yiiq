@@ -26,7 +26,7 @@ class GoodTest extends Job
         $this->startYiiq($queue, $threads);
 
         $this->assertFalse(file_exists($goodPath));
-        $job = \Yii::app()->yiiq->enqueueSimple('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile], $queue);
+        $job = \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile], $queue);
 
         $this->waitForJobs($threads, 1);
 
@@ -56,7 +56,7 @@ class GoodTest extends Job
         $jobs = [];
         for ($i = 1; $i < 4; $i++) {
             $this->assertFalse(file_exists($goodPath.$i));
-            $jobs[$i] = \Yii::app()->yiiq->enqueueSimple('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile.$i], $queue);
+            $jobs[$i] = \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile.$i], $queue);
             $this->assertFalse($jobs[$i]->status->isCompleted);
             $this->assertFalse($jobs[$i]->status->isFailed);
         }
@@ -90,7 +90,7 @@ class GoodTest extends Job
         $jobs = [];
         for ($i = 1; $i < 4; $i++) {
             $this->assertFalse(file_exists($goodPath.$i));
-            $jobs[$i] = \Yii::app()->yiiq->enqueueSimple('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile.$i], $queue);
+            $jobs[$i] = \Yii::app()->yiiq->enqueue('\Yiiq\test\jobs\GoodJob', ['file' => $goodFile.$i], $queue);
             $this->assertFalse($jobs[$i]->status->isCompleted);
             $this->assertFalse($jobs[$i]->status->isFailed);
         }
