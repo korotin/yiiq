@@ -10,6 +10,17 @@ Yii::app()->yiiq->enqueue('\MyJob');
 ```
 And it's done!
 
+## Table of contents
+
+* [Features](#user-content-features)
+* [Requirements](#user-content-requirements)
+* [Installation](#user-content-installation)
+* [Usage](#user-content-usage)
+    * [Creating jobs](#user-content-creating-jobs)
+        * [Simple job](#user-content-simple-job)
+        * [Scheduled job](#user-content-scheduled-job)
+        * [Repeatable job](#user-content-repeatable-job)
+
 ## Features
 
 * **Stability**<br>If job crashed, daemon stays alive. If server crashed, daemon recovers its state with all unfinished jobs.
@@ -119,7 +130,10 @@ class YiiqDummyJob extends \Yiiq\jobs\Payload
      */
     public function run()
     {
-        Yii::trace('Started dummy job '.$this->queue.':'.$this->id.' (sleep for '.$this->sleep.'s).');
+        Yii::trace(
+            'Started dummy job '.$this->queue.':'.$this->id
+            .' (sleep for '.$this->sleep.'s).'
+        );
         sleep($this->sleep);
         Yii::trace('Job '.$this->queue.':'.$this->id.' completed.');
     }
@@ -217,7 +231,7 @@ To create a repeatable job, you may use following code:
 // Run job each 300 seconds.
 
 // Via arguments:
-$job = Yii::app()->yiiq->enqueueRepeatable(
+$job = Yii::app()->yiiq->enqueueEach(
     300, 
     '\YiiqDummyJob'
 );
@@ -228,4 +242,4 @@ $job = Yii::app()->yiiq->
     runEach(300)->
     enqueue();
 ```
-Note that repeatable job cannot return any data back to **Yiiq**.`
+Note that repeatable job cannot return any data back to **Yiiq**.

@@ -314,7 +314,26 @@ class Yiiq extends \CApplicationComponent
     }
 
     /**
+     * Create base builder configuration.
+     *
+     * @param  string      $class job class extended from \Yiiq\jobs\Base
+     * @param  array       $args  values for job object properties
+     * @param  string      $queue \Yiiq\Yiiq::DEFAULT_QUEUE by default
+     * @param  string|null $id    globally unique job id
+     * @return Builder
+     */
+    protected function enqueueBase($class, array $args, $queue, $id)
+    {
+        return $this->
+            create($class, $id)->
+            into($queue)->
+            withArgs($args);
+    }
+
+    /**
      * Create a simple job in given queue.
+     *
+     * If job with specified id exists, job will be not created and null will be returned.
      *
      * @param  string      $class job class extended from \Yiiq\jobs\Base
      * @param  array       $args  (optional) values for job object properties
@@ -325,14 +344,14 @@ class Yiiq extends \CApplicationComponent
     public function enqueue($class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
         return $this->
-            create($class, $id)->
-            into($queue)->
-            withArgs($args)->
+            enqueueBase($class, $args, $queue, $id)->
             enqueue();
     }
 
     /**
      * Create a job in given queue wich will be executed at given time.
+     *
+     * If job with specified id exists, job will be not created and null will be returned.
      *
      * @param  integer     $timestamp timestamp to execute job at
      * @param  string      $class     job class extended from \Yiiq\jobs\Base
@@ -344,15 +363,15 @@ class Yiiq extends \CApplicationComponent
     public function enqueueAt($timestamp, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
         return $this->
-            create($class, $id)->
-            into($queue)->
-            withArgs($args)->
+            enqueueBase($class, $args, $queue, $id)->
             runAt($timestamp)->
             enqueue();
     }
 
     /**
      * Create a job in given queue wich will be executed after specified interval.
+     *
+     * If job with specified id exists, job will be not created and null will be returned.
      *
      * @param  integer     $interval time to wait before execution in seconds
      * @param  string      $class    job class extended from \Yiiq\jobs\Base
@@ -364,9 +383,7 @@ class Yiiq extends \CApplicationComponent
     public function enqueueAfter($interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
         return $this->
-            create($class, $id)->
-            into($queue)->
-            withArgs($args)->
+            enqueueBase($class, $args, $queue, $id)->
             runAfter($interval)->
             enqueue();
     }
@@ -374,22 +391,19 @@ class Yiiq extends \CApplicationComponent
      /**
      * Create a job, which will execute each $interval seconds.
      *
-     * Unlike other job types repeatable job requires $id to be set.
      * If job with given id already exists, it will be overwritten.
      *
-     * @param  integer     $interval
-     * @param  string      $class
-     * @param  array       $args
-     * @param  string      $queue
-     * @param  string|null $id
+     * @param  integer     $interval interval between executions in seconds
+     * @param  string      $class    job class extended from \Yiiq\jobs\Base
+     * @param  array       $args     (optional) values for job object properties
+     * @param  string      $queue    (optional) \Yiiq\Yiiq::DEFAULT_QUEUE by default
+     * @param  string|null $id       (optional) globally unique job id
      * @return Job|null
      */
     public function enqueueEach($interval, $class, array $args = [], $queue = self::DEFAULT_QUEUE, $id = null)
     {
         return $this->
-            create($class, $id)->
-            into($queue)->
-            withArgs($args)->
+            enqueueBase($class, $args, $queue, $id)->
             runEach($interval)->
             enqueue();
     }
