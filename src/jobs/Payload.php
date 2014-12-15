@@ -46,11 +46,13 @@ abstract class Payload
      */
     protected $args;
 
-    public function __construct($queue, $type, $id)
+    public function __construct(Job $job)
     {
-        $this->queue = $queue;
-        $this->type = $type;
-        $this->id = $id;
+        $metadata = $job->metadata;
+
+        $this->queue    = $metadata->queue;
+        $this->type     = $metadata->type;
+        $this->id       = $metadata->id;
     }
 
     /**

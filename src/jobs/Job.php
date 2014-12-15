@@ -105,6 +105,6 @@ class Job extends JobComponent
         $metadata = $this->getMetadata();
         $class = $metadata->class;
 
-        return new $class($metadata->queue, $metadata->type, $metadata->id);
+        return new $class($this);
     }
 }

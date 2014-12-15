@@ -130,6 +130,7 @@ class Yiiq extends \CApplicationComponent
                 addPool('executing', '\ARedisSortedSet')->
                 addPool('completed', '\ARedisSet')->
                 addPool('failed', '\ARedisSet')->
+                addPoolGroup('workers', '\Yiiq\util\RedisString')->
                 addPoolGroup('children', '\ARedisSet')->
                 addPoolGroup(self::TYPE_SIMPLE, '\ARedisSet')->
                 addPoolGroup(self::TYPE_SCHEDULED, '\ARedisSortedSet')->
@@ -218,7 +219,7 @@ class Yiiq extends \CApplicationComponent
     }
 
     /**
-     * Create a builder.
+     * Create a job builder.
      *
      * @param  string|null $class
      * @param  string|null $id

@@ -37,7 +37,7 @@ class PoolGroup extends Component implements \ArrayAccess
     /**
      * Pool array.
      *
-     * @var \ARedisIterableEntity
+     * @var \ARedisEntity
      */
     protected $pools = [];
 
@@ -55,6 +55,7 @@ class PoolGroup extends Component implements \ArrayAccess
 
     public function offsetGet($offset)
     {
+        $offset = (string) $offset;
         if (!isset($this->pools[$offset])) {
             $class = $this->class;
             $this->pools[$offset] = new $class($this->owner->prefix.':'.$this->type.':'.$offset);

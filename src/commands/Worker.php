@@ -14,6 +14,7 @@ use Yiiq\Yiiq;
 use Yiiq\jobs\Job;
 use Yiiq\jobs\Runner;
 use Yiiq\util\Queue;
+use Yiiq\util\SignalDispatcher;
 
 /**
  * Yiiq worker command class.
@@ -44,6 +45,13 @@ class Worker extends Base
     protected $maxThreads;
 
     /**
+     * Signal dispatcher.
+     *
+     * @var SignalDispatcher
+     */
+    protected $signalDispatcher;
+
+    /**
      * Child pid pool.
      *
      * @var \ARedisSet
@@ -66,24 +74,6 @@ class Worker extends Base
     protected $shutdown = false;
 
     /**
-     * Whether signal handled already.
-     *
-     * @var boolean
-     */
-    protected $signalHandled = false;
-
-    /**
-     * Return queue-to-pid key name.
-     *
-     * @param  string $queue
-     * @return string
-     */
-    protected function getWorkerPidName($queue)
-    {
-        return \Yii::app()->yiiq->prefix.':workers:'.$queue;
-    }
-
-    /**
      * Get child pid pool.
      *
      * @return \ARedisSet
@@ -104,7 +94,7 @@ class Worker extends Base
     {
         foreach ($this->queues as $queue) {
             if (
-                ($oldPid = \Yii::app()->redis->get($this->getWorkerPidName($queue)))
+                ($oldPid = \Yii::app()->yiiq->pools->workers[$queue]->get())
                 && (\Yii::app()->yiiq->health->isPidAlive($oldPid))
             ) {
                 \Yii::trace('Worker for queue '.$queue.' already running.');
@@ -119,7 +109,7 @@ class Worker extends Base
     protected function savePid()
     {
         foreach ($this->queues as $queue) {
-            \Yii::app()->redis->set($this->getWorkerPidName($queue), $this->pid);
+            \Yii::app()->yiiq->pools->workers[$queue]->set($this->pid);
         }
 
         \Yii::app()->yiiq->pools->pids->add($this->pid);
@@ -131,28 +121,38 @@ class Worker extends Base
     protected function clearPid()
     {
         foreach ($this->queues as $queue) {
-            \Yii::app()->redis->del($this->getWorkerPidName($queue));
+            \Yii::app()->yiiq->pools->workers[$queue]->del();
         }
 
         \Yii::app()->yiiq->pools->pids->remove($this->pid);
     }
 
     /**
-     * Handle SIGTERM.
+     * Get signal dispatcher.
+     *
+     * @return SignalDispatcher
      */
-    protected function handleSigTerm()
+    protected function getSignalDispatcher()
     {
-        $this->signalHandled = true;
-        $this->shutdown = true;
+        if ($this->signalDispatcher === null) {
+            $this->signalDispatcher = new SignalDispatcher(\Yii::app()->yiiq);
+        }
+
+        return $this->signalDispatcher;
     }
 
     /**
-     * Handle SIGCHLD.
+     * Setup signal handlers.
      */
-    protected function handleSigChld()
+    protected function setupSignals()
     {
-        $this->signalHandled = true;
-        $this->waitForThread(WNOHANG | WUNTRACED);
+        $this->getSignalDispatcher()->
+            on(SIGTERM, function () {
+                $this->shutdown = true;
+            })->
+            on(SIGCHLD, function () {
+                $this->waitForThread(WNOHANG | WUNTRACED);
+            });
     }
 
     /**
@@ -166,48 +166,6 @@ class Worker extends Base
             SIGTERM => 'handleSigTerm',
             SIGCHLD => 'handleSigChld',
         ];
-    }
-
-    /**
-     * Set up handlers for signals.
-     */
-    protected function setupSignals()
-    {
-        foreach ($this->getSignalHandlers() as $signal => $method) {
-            pcntl_signal($signal, [$this, $method]);
-        }
-    }
-
-    /**
-     * Wait some time for signal.
-     * If signal received, it will be correclty handled.
-     */
-    protected function waitForSignals()
-    {
-        $handlers = $this->getSignalHandlers();
-
-        $siginfo = [];
-        $signal = pcntl_sigtimedwait(
-            array_keys($handlers),
-            $siginfo,
-            0,
-            pow(10, 9) * 0.01
-        );
-
-        if (isset($handlers[$signal])) {
-            $this->{$handlers[$signal]}();
-        }
-    }
-
-    /**
-     * Dispatch all signals.
-     */
-    protected function dispatchSignals()
-    {
-        do {
-            $this->signalHandled = false;
-            pcntl_signal_dispatch();
-        } while ($this->signalHandled);
     }
 
     /**
@@ -259,7 +217,6 @@ class Worker extends Base
 
             // If status is non-zero or job is still marked as executing,
             // child process failed.
-
             if ($status || $job->status->isExecuting) {
                 \Yii::app()->yiiq->restore($job->id);
             }
@@ -277,13 +234,40 @@ class Worker extends Base
     }
 
     /**
+     * Wait for threads or signals.
+     */
+    protected function wait()
+    {
+        // If no free slots available wait for any child to exit. Otherwise just wait some time.
+        if (!$this->hasFreeThread()) {
+            \Yii::app()->yiiq->setProcessTitle(
+                'worker',
+                $this->queues,
+                'no free threads ('.$this->maxThreads.' threads)'
+            );
+
+            $this->waitForThread();
+        } else {
+            \Yii::app()->yiiq->setProcessTitle(
+                'worker',
+                $this->queues,
+                'no new jobs ('.$this->getThreadsCount()
+                .' of '.$this->maxThreads.' threads busy)'
+            );
+
+            // Wait a little before next loop.
+            $this->getSignalDispatcher()->wait();
+        }
+    }
+
+    /**
      * Run job with given id.
      * Job will be executed in fork and method will return
      * after the fork get initialized.
      *
      * @param Job $job
      */
-    protected function runJob(Job $job)
+    protected function execute(Job $job)
     {
         $runner = new Runner(\Yii::app()->yiiq, $job);
 
@@ -309,14 +293,7 @@ class Worker extends Base
 
         while (!$this->shutdown) {
             // Iterate over free threads.
-            while ($this->hasFreeThread() && !$this->shutdown) {
-                // Handle signals.
-                $this->dispatchSignals();
-
-                if ($this->shutdown) {
-                    break;
-                }
-
+            while ($this->hasFreeThread()) {
                 // Look for new job.
                 // Iterate over all watched queues, stop when new job found or
                 // all queues iterated.
@@ -338,36 +315,14 @@ class Worker extends Base
                 }
 
                 // Execute found job.
-                $this->runJob($job);
+                $this->execute($job);
             }
 
-            if ($this->shutdown) {
-                break;
-            }
-
-            // If no free slots available wait for any child to exit. Otherwise just wait some time.
-            if (!$this->hasFreeThread()) {
-                \Yii::app()->yiiq->setProcessTitle(
-                    'worker',
-                    $this->queues,
-                    'no free threads ('.$this->maxThreads.' threads)'
-                );
-
-                $this->waitForThread();
-            } else {
-                \Yii::app()->yiiq->setProcessTitle(
-                    'worker',
-                    $this->queues,
-                    'no new jobs ('.$this->getThreadsCount()
-                    .' of '.$this->maxThreads.' threads busy)'
-                );
-
-                // Wait a little before next loop.
-                $this->waitForSignals();
-            }
+            // Wait for free threads or signals.
+            $this->wait();
 
             // Handle signals.
-            $this->dispatchSignals();
+            $this->getSignalDispatcher()->dispatch();
         }
     }
 
@@ -391,8 +346,8 @@ class Worker extends Base
         \Yii::app()->yiiq->setProcessTitle('worker', $this->queues, 'initializing');
 
         $this->checkRunningWorkers();
-        $this->setupSignals();
         $this->savePid();
+        $this->setupSignals();
 
         \Yii::trace('Started new yiiq worker '.$this->pid.' for '.implode(', ', $this->queues).'.');
 
