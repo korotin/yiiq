@@ -17,16 +17,29 @@ namespace Yiiq\util;
  */
 class RedisString extends \ARedisEntity
 {
+    /**
+     * Get string value.
+     *
+     * @return string
+     */
     public function get()
     {
         return $this->getConnection()->get($this->name);
     }
 
+    /**
+     * Set string value.
+     *
+     * @param string $value
+     */
     public function set($value)
     {
         $this->getConnection()->set($this->name, $value);
     }
 
+    /**
+     * Delete string.
+     */
     public function del()
     {
         $this->getConnection()->del($this->name);
