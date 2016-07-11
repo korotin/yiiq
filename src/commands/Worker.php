@@ -175,7 +175,19 @@ class Worker extends Base
      */
     protected function getThreadsCount()
     {
-        return (int) \Yii::app()->redis->getClient()->scard($this->getChildPool()->name);
+        $pids = \Yii::app()->redis->getClient()->smembers($this->getChildPool()->name);
+        if(empty($pids)) {
+            $pids = [];
+        }
+
+        foreach($pids as $key => $pid) {
+            if(!file_exists('/proc/'.$pid)) {
+                unset($pids[$key]);
+                \Yii::app()->redis->getClient()->srem($this->getChildPool()->name, $pid);
+            }
+        }
+
+        return count($pids);
     }
 
     /**
