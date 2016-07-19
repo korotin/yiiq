@@ -290,8 +290,10 @@ class Yiiq extends \CApplicationComponent
         $this->getPools()->executing->remove($id);
 
         if (
-            $this->faultIntervals
-            && $metadata->faults > count($this->faultIntervals)
+            (empty($this->faultIntervals)
+            ||($this->faultIntervals
+            && $metadata->faults > count($this->faultIntervals)))
+            && $metadata->type != self::TYPE_REPEATABLE
         ) {
             $metadata->save(true);
             $this->delete($id, false);
